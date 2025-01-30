@@ -7,22 +7,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def main():
-    # Add argument parser
-    parser = argparse.ArgumentParser(description='Analyze Terraform plan file')
-    parser.add_argument('-i', '--input', 
-                       required=True,
-                       help='Path to the plan file to analyze')
+    parser = argparse.ArgumentParser(description='Analyze Terraform plan files')
+    parser.add_argument('plan_path', help='Path to the Terraform plan file')
+    parser.add_argument('--config', help='Path to the rules configuration JSON file')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     
     args = parser.parse_args()
     
-    analyzer = LocalPlanAnalyzer()
-    try:
-        report = analyzer.generate_report(args.input)
-        analyzer.print_report(report)
-    except FileNotFoundError:
-        logger.error("Plan file not found")
-    except Exception as e:
-        logger.error(f"Processing failed: {str(e)}")
+    analyzer = LocalPlanAnalyzer(config_path=args.config, debug=args.debug)
+    report = analyzer.generate_report(args.plan_path)
+    analyzer.print_report(report)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main() 

@@ -1,0 +1,64 @@
+{
+  "sensitive_patterns": [
+    {
+      "pattern": "\\bAKIA[0-9A-Z]{16}\\b",
+      "replacement": "[AWS-KEY-REDACTED]",
+      "description": "Redacts AWS permanent access key IDs"
+    },
+    {
+      "pattern": "\\bASIA[0-9A-Z]{16}\\b",
+      "replacement": "[AWS-TEMP-KEY-REDACTED]",
+      "description": "Redacts AWS temporary security credentials"
+    },
+    {
+      "pattern": "(?:\"subscriptionId\"|\"tenantId\")\\s*:\\s*\"[^\"]*\"",
+      "replacement": "[CLOUD-ID-REDACTED]",
+      "description": "Redacts cloud platform subscription and tenant IDs"
+    },
+    {
+      "pattern": "(?i)(?:\"password\"|\"secret\"|\"token\"|\"key\")\"?\\s*[:=]\\s*\"([^\"]+)\"",
+      "replacement": "[SECRET-REDACTED]",
+      "description": "Redacts sensitive credentials and tokens"
+    },
+    {
+      "pattern": "(?:\\d{1,3}\\.){3}\\d{1,3}",
+      "replacement": "[IP-REDACTED]",
+      "description": "Redacts IPv4 addresses"
+    },
+    {
+      "pattern": "(?:name|resourceGroup|clusterName)\\s*:\\s*([\"']?)([^\"'\\s]+)\\1",
+      "replacement": "[REDACTED]",
+      "description": "Redacts resource identifiers"
+    }
+  ],
+  "risk_rules": {
+    "high": [
+      {
+        "pattern": "\\b(update|delete)\\b.*\\baws_security[a-zA-Z_]*\\b",
+        "message": "High risk: AWS security resource modification/deletion detected"
+      },
+      {
+        "pattern": "\\bdelete\\b.*\\b(persistentvolumeclaim|database|storage)\\b",
+        "message": "High risk: Critical storage resource deletion detected"
+      },
+      {
+        "pattern": "\\b(update|delete)\\b.*\\b(firewall|IAM)\\b",
+        "message": "High risk: Security-related configuration change"
+      },
+      {
+        "pattern": "\\bdelete\\b.*\\b(customresourcedefinition|CRD)\\b",
+        "message": "High risk: CRD deletion could break existing workflows"
+      }
+    ],
+    "medium": [
+      {
+        "pattern": "\\bcreate\\b.*\\b(bucket|storage)\\b.*publicAccessEnabled:\\s*true",
+        "message": "Medium risk: Public storage resource being created"
+      },
+      {
+        "pattern": "\\bmodify\\b.*\\b(image|version)\\b",
+        "message": "Medium risk: Version change could cause compatibility issues"
+      }
+    ]
+  }
+} 

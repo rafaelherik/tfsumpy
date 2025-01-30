@@ -10,6 +10,9 @@ setup(
     author_email='support@notry.cloud',
     url='https://github.com/notry-cloud/tfsumpy',
     packages=find_packages(),
+    package_data={
+        'tfsumpy': ['rules_config.json'],
+    },
     entry_points={
         'console_scripts': [
             'tfsumpy=tfsumpy.__main__:main'
@@ -17,7 +20,6 @@ setup(
     },
     python_requires='>=3.10',
     install_requires=[
-        # Add your dependencies here
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',

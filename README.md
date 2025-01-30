@@ -27,13 +27,59 @@ pip install .
 
 ## Usage
 
+First, generate a Terraform plan JSON file:
+
 ```bash
 terraform plan -out=tfplan
 terraform show -json tfplan > plan.json
-````
+```
+
+Then analyze the plan using TFSumPy:
 
 ```bash
-tfsumpy -i plan.json
+# Using default rules
+tfsumpy plan.json
+
+# Using custom rules configuration
+tfsumpy plan.json --config rules_config.json
+```
+
+### Custom Rules Configuration
+
+You can customize the analysis rules by creating a JSON configuration file. Here's an example structure:
+
+```json
+{
+  "sensitive_patterns": [
+    {
+      "pattern": "\\bAKIA[0-9A-Z]{16}\\b",
+      "replacement": "[AWS-KEY-REDACTED]"
+    },
+    {
+      "pattern": "\\b(password|secret|token)\\b[\"']?:?[\\s\"']+[^\\s\"']+",
+      "replacement": "[SECRET-REDACTED]"
+    }
+  ],
+  "risk_rules": {
+    "high": [
+      {
+        "pattern": "\\bdelete\\b.*\\b(database|storage)\\b",
+        "message": "High risk: Critical storage resource deletion detected"
+      }
+    ],
+    "medium": [
+      {
+        "pattern": "\\bcreate\\b.*\\b(bucket|storage)\\b.*public:\\s*true",
+        "message": "Medium risk: Public storage resource being created"
+      }
+    ]
+  }
+}
+```
+
+The configuration file allows you to define:
+- `sensitive_patterns`: Regular expressions to identify and redact sensitive information
+- `risk_rules`: Patterns to identify high and medium risk changes
 
 Infrastructure Change Analysis
 ==============================
@@ -54,8 +100,6 @@ Resource Details:
 - UPDATE aws_ecs_service: api-service
 - DELETE aws_iam_role: legacy-role
 - CREATE aws_lambda_function: processor-function
-
-```
 
 ## Requirements
 
