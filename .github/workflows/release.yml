@@ -49,7 +49,6 @@ jobs:
           Please refer to [CHANGELOG.md](./CHANGELOG.md) for details.
           
     - name: Publish to PyPI
-      if: github.repository == 'notry-cloud/pypi'  
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}

@@ -24,11 +24,11 @@ build: clean
 
 release: test clean
 	@echo "Creating release for version $(VERSION)"
-	@# Update version in __init__.py
-	@sed -i "s/__version__ = .*/__version__ = '$(VERSION)'/" tfsumpy/__init__.py
+	@# Update version in __init__.py (works on both Linux and macOS)
+	@sed -i.bak "s/__version__ = .*/__version__ = '$(VERSION)'/" tfsumpy/__init__.py && rm -f tfsumpy/__init__.py.bak
 	@# Update version in setup.py if it exists
 	@if grep -q "version=" setup.py; then \
-		sed -i "s/version=.*/version='$(VERSION)',/" setup.py; \
+		sed -i.bak "s/version=.*/version='$(VERSION)',/" setup.py && rm -f setup.py.bak; \
 	fi
 	@# Commit changes
 	git add tfsumpy/__init__.py setup.py
