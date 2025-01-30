@@ -10,6 +10,11 @@ setup(
     author_email='support@notry.cloud',
     url='https://github.com/notry-cloud/tfsumpy',
     packages=find_packages(),
+    project_urls={
+        'Bug Tracker': 'https://github.com/notry-cloud/tfsumpy/issues',
+        'Source Code': 'https://github.com/notry-cloud/tfsumpy',
+        "GitHub": "https://github.com/notry-cloud/tfsumpy",
+    },
     package_data={
         'tfsumpy': ['rules_config.json'],
     },
