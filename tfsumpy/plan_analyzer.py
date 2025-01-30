@@ -1,6 +1,5 @@
 import re
 import json
-import yaml
 import logging
 import os
 from typing import Dict, List

@@ -20,6 +20,7 @@ setup(
     },
     python_requires='>=3.10',
     install_requires=[
+        'pytest>=7.0.0',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
