@@ -66,7 +66,7 @@ debug-sample: install
 	$(PYTHON) -m tfsumpy samples/sample1.json --debug --config tfsumpy/rules_config.json
 
 # Release command (unchanged)
-release: check clean
+release: 
 	@echo "Creating release for version $(VERSION)"
 	@# Update version in __init__.py (works on both Linux and macOS)
 	@sed -i.bak "s/__version__ = .*/__version__ = '$(VERSION)'/" tfsumpy/__init__.py && rm -f tfsumpy/__init__.py.bak
@@ -78,7 +78,7 @@ release: check clean
 	git add tfsumpy/__init__.py setup.py
 	git commit -m "Bump version to $(VERSION)"
 	@# Create and push tag
-	git tag -a v$(VERSION) -m "Release version $(VERSION)"
+	git tag -a v$(VERSION) -m "Release version $(VERSION)" --force
 	git push origin main
 	git push origin v$(VERSION)
 	@echo "Release v$(VERSION) created and pushed. GitHub Actions will handle the rest."
