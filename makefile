@@ -1,4 +1,4 @@
-.PHONY: help test clean build release
+.PHONY: help test clean build release run-sample debug-sample
 
 VERSION ?= $(error Please set VERSION variable to create a release: make release VERSION=0.1.0)
 
@@ -8,9 +8,19 @@ help:
 	@echo "  make clean     - Remove build artifacts"
 	@echo "  make build     - Build the package"
 	@echo "  make release   - Create a new release (requires VERSION=X.Y.Z)"
+	@echo "  make run-sample - Run tfsumpy with sample1.json plan file"
+	@echo "  make debug-sample - Run tfsumpy with sample1.json plan file and custom config"
 
 test:
 	pytest
+
+run-sample: build
+	@echo "Running tfsumpy with sample1.json plan file..."
+	python -m tfsumpy samples/sample1.json --debug
+
+debug-sample: build
+	@echo "Running tfsumpy with sample1.json plan file and custom config..."
+	python -m tfsumpy samples/sample1.json --debug --config tfsumpy/rules_config.json
 
 clean:
 	rm -rf build/

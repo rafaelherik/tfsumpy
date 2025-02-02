@@ -1,0 +1,780 @@
+{
+  "format_version": "1.1",
+  "terraform_version": "1.5.0",
+  "planned_values": {
+    "root_module": {
+      "child_modules": [
+        {
+          "address": "module.vnet",
+          "resources": [
+            {
+              "address": "module.vnet.azurerm_virtual_network.main",
+              "mode": "managed",
+              "type": "azurerm_virtual_network",
+              "name": "main",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "values": {
+                "name": "lz-vnet",
+                "resource_group_name": "lz-network-rg",
+                "location": "westeurope",
+                "address_space": ["10.0.0.0/16"],
+                "tags": {
+                  "Environment": "Production",
+                  "LandingZone": "core"
+                }
+              }
+            },
+            {
+              "address": "module.vnet.azurerm_management_lock.vnet_lock",
+              "mode": "managed",
+              "type": "azurerm_management_lock",
+              "name": "vnet_lock",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "values": {
+                "name": "protect-vnet",
+                "scope": "${azurerm_virtual_network.main.id}",
+                "lock_level": "CanNotDelete"
+              }
+            },
+            {
+              "address": "module.vnet.azurerm_role_assignment.vnet_contributor",
+              "mode": "managed",
+              "type": "azurerm_role_assignment",
+              "name": "vnet_contributor",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "values": {
+                "scope": "${azurerm_virtual_network.main.id}",
+                "role_definition_name": "Network Contributor",
+                "principal_id": "12345678-1234-1234-1234-123456789012"
+              }
+            }
+          ]
+        },
+        {
+          "address": "module.firewall",
+          "resources": [
+            {
+              "address": "module.firewall.azurerm_firewall.main",
+              "mode": "managed",
+              "type": "azurerm_firewall",
+              "name": "main",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "values": {
+                "name": "lz-firewall",
+                "resource_group_name": "lz-network-rg",
+                "location": "westeurope",
+                "sku_name": "AZFW_VNet",
+                "sku_tier": "Premium",
+                "tags": {
+                  "Environment": "Production",
+                  "LandingZone": "core"
+                }
+              }
+            },
+            {
+              "address": "module.firewall.azurerm_management_lock.firewall_lock",
+              "mode": "managed",
+              "type": "azurerm_management_lock",
+              "name": "firewall_lock",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "values": {
+                "name": "protect-firewall",
+                "scope": "${azurerm_firewall.main.id}",
+                "lock_level": "CanNotDelete"
+              }
+            }
+          ]
+        },
+        {
+          "address": "module.compute",
+          "resources": [
+            {
+              "address": "module.compute.azurerm_linux_virtual_machine_scale_set.app",
+              "mode": "managed",
+              "type": "azurerm_linux_virtual_machine_scale_set",
+              "name": "app",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "values": {
+                "name": "lz-app-vmss",
+                "resource_group_name": "lz-compute-rg",
+                "location": "westeurope",
+                "sku": "Standard_D2s_v3",
+                "instances": 2,
+                "tags": {
+                  "Environment": "Production",
+                  "LandingZone": "core"
+                }
+              }
+            },
+            {
+              "address": "module.compute.azurerm_role_assignment.vmss_contributor",
+              "mode": "managed",
+              "type": "azurerm_role_assignment",
+              "name": "vmss_contributor",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "values": {
+                "scope": "${azurerm_linux_virtual_machine_scale_set.app.id}",
+                "role_definition_name": "Virtual Machine Contributor",
+                "principal_id": "12345678-1234-1234-1234-123456789012"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "module.vnet.azurerm_virtual_network.main",
+      "module_address": "module.vnet",
+      "mode": "managed",
+      "type": "azurerm_virtual_network",
+      "name": "main",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-vnet",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope",
+          "address_space": ["10.0.0.0/16"]
+        },
+        "after": {
+          "name": "lz-vnet",
+          "resource_group_name": "lz-network-rg",
+          "location": "northeurope",
+          "address_space": ["10.0.0.0/16", "172.16.0.0/16"]
+        }
+      }
+    },
+    {
+      "address": "module.firewall.azurerm_firewall.main",
+      "module_address": "module.firewall",
+      "mode": "managed",
+      "type": "azurerm_firewall",
+      "name": "main",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "lz-firewall",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope",
+          "sku_name": "AZFW_VNet",
+          "sku_tier": "Premium"
+        },
+        "after": {
+          "name": "lz-firewall",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope",
+          "sku_name": "AZFW_VNet",
+          "sku_tier": "Standard"
+        }
+      }
+    },
+    {
+      "address": "module.compute.azurerm_linux_virtual_machine_scale_set.app",
+      "module_address": "module.compute",
+      "mode": "managed",
+      "type": "azurerm_linux_virtual_machine_scale_set",
+      "name": "app",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-app-vmss",
+          "resource_group_name": "lz-compute-rg",
+          "location": "westeurope",
+          "sku": "Standard_D2s_v3",
+          "instances": 2
+        },
+        "after": {
+          "name": "lz-app-vmss",
+          "resource_group_name": "lz-compute-rg",
+          "location": "northeurope",
+          "sku": "Standard_D4s_v3",
+          "instances": 4
+        }
+      }
+    },
+    {
+      "address": "module.storage.azurerm_storage_account.logs",
+      "module_address": "module.storage",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "logs",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lzlogsstorage",
+          "resource_group_name": "lz-storage-rg",
+          "location": "northeurope",
+          "account_tier": "Standard",
+          "account_replication_type": "GRS"
+        }
+      }
+    },
+    {
+      "address": "module.keyvault.azurerm_key_vault.main",
+      "module_address": "module.keyvault",
+      "mode": "managed",
+      "type": "azurerm_key_vault",
+      "name": "main",
+      "change": {
+        "actions": ["delete"],
+        "before": {
+          "name": "lz-keyvault",
+          "resource_group_name": "lz-security-rg",
+          "location": "westeurope",
+          "sku_name": "standard"
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "module.monitor.azurerm_log_analytics_workspace.main",
+      "module_address": "module.monitor",
+      "mode": "managed",
+      "type": "azurerm_log_analytics_workspace",
+      "name": "main",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "lz-logs",
+          "resource_group_name": "lz-monitor-rg",
+          "location": "westeurope",
+          "sku": "PerGB2018",
+          "retention_in_days": 30
+        },
+        "after": {
+          "name": "lz-logs",
+          "resource_group_name": "lz-monitor-rg",
+          "location": "westeurope",
+          "sku": "PerGB2018",
+          "retention_in_days": 90
+        }
+      }
+    },
+    {
+      "address": "module.appgateway.azurerm_application_gateway.main",
+      "module_address": "module.appgateway",
+      "mode": "managed",
+      "type": "azurerm_application_gateway",
+      "name": "main",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-appgw",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope",
+          "sku": {
+            "name": "Standard_v2",
+            "tier": "Standard_v2",
+            "capacity": 2
+          }
+        },
+        "after": {
+          "name": "lz-appgw",
+          "resource_group_name": "lz-network-rg",
+          "location": "northeurope",
+          "sku": {
+            "name": "WAF_v2",
+            "tier": "WAF_v2",
+            "capacity": 3
+          }
+        }
+      }
+    },
+    {
+      "address": "module.acr.azurerm_container_registry.main",
+      "module_address": "module.acr",
+      "mode": "managed",
+      "type": "azurerm_container_registry",
+      "name": "main",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "lzcontainerregistry",
+          "resource_group_name": "lz-containers-rg",
+          "location": "westeurope",
+          "sku": "Basic"
+        },
+        "after": {
+          "name": "lzcontainerregistry",
+          "resource_group_name": "lz-containers-rg",
+          "location": "westeurope",
+          "sku": "Premium"
+        }
+      }
+    },
+    {
+      "address": "module.cosmos.azurerm_cosmosdb_account.main",
+      "module_address": "module.cosmos",
+      "mode": "managed",
+      "type": "azurerm_cosmosdb_account",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lz-cosmos-account",
+          "resource_group_name": "lz-data-rg",
+          "location": "northeurope",
+          "offer_type": "Standard",
+          "kind": "GlobalDocumentDB",
+          "enable_automatic_failover": true
+        }
+      }
+    },
+    {
+      "address": "module.appinsights.azurerm_application_insights.main",
+      "module_address": "module.appinsights",
+      "mode": "managed",
+      "type": "azurerm_application_insights",
+      "name": "main",
+      "change": {
+        "actions": ["delete"],
+        "before": {
+          "name": "lz-appinsights",
+          "resource_group_name": "lz-monitor-rg",
+          "location": "westeurope",
+          "application_type": "web"
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "module.sql.azurerm_mssql_server.main",
+      "module_address": "module.sql",
+      "mode": "managed",
+      "type": "azurerm_mssql_server",
+      "name": "main",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-sql-server",
+          "resource_group_name": "lz-data-rg",
+          "location": "westeurope",
+          "version": "12.0"
+        },
+        "after": {
+          "name": "lz-sql-server",
+          "resource_group_name": "lz-data-rg",
+          "location": "northeurope",
+          "version": "12.0",
+          "minimum_tls_version": "1.2"
+        }
+      }
+    },
+    {
+      "address": "module.sql.azurerm_mssql_database.main",
+      "module_address": "module.sql",
+      "mode": "managed",
+      "type": "azurerm_mssql_database",
+      "name": "main",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-database",
+          "server_id": "${azurerm_mssql_server.main.id}",
+          "sku_name": "S1"
+        },
+        "after": {
+          "name": "lz-database",
+          "server_id": "${azurerm_mssql_server.main.id}",
+          "sku_name": "S2"
+        }
+      }
+    },
+    {
+      "address": "module.backup.azurerm_recovery_services_vault.main",
+      "module_address": "module.backup",
+      "mode": "managed",
+      "type": "azurerm_recovery_services_vault",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lz-backup-vault",
+          "resource_group_name": "lz-backup-rg",
+          "location": "northeurope",
+          "sku": "Standard"
+        }
+      }
+    },
+    {
+      "address": "module.redis.azurerm_redis_cache.main",
+      "module_address": "module.redis",
+      "mode": "managed",
+      "type": "azurerm_redis_cache",
+      "name": "main",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "lz-redis",
+          "resource_group_name": "lz-cache-rg",
+          "location": "westeurope",
+          "capacity": 1,
+          "family": "C",
+          "sku_name": "Standard"
+        },
+        "after": {
+          "name": "lz-redis",
+          "resource_group_name": "lz-cache-rg",
+          "location": "westeurope",
+          "capacity": 2,
+          "family": "P",
+          "sku_name": "Premium"
+        }
+      }
+    },
+    {
+      "address": "module.servicebus.azurerm_servicebus_namespace.main",
+      "module_address": "module.servicebus",
+      "mode": "managed",
+      "type": "azurerm_servicebus_namespace",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lz-servicebus",
+          "resource_group_name": "lz-messaging-rg",
+          "location": "northeurope",
+          "sku": "Standard"
+        }
+      }
+    },
+    {
+      "address": "module.cdn.azurerm_cdn_profile.main",
+      "module_address": "module.cdn",
+      "mode": "managed",
+      "type": "azurerm_cdn_profile",
+      "name": "main",
+      "change": {
+        "actions": ["delete"],
+        "before": {
+          "name": "lz-cdn-profile",
+          "resource_group_name": "lz-cdn-rg",
+          "location": "westeurope",
+          "sku": "Standard_Microsoft"
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "module.eventhub.azurerm_eventhub_namespace.main",
+      "module_address": "module.eventhub",
+      "mode": "managed",
+      "type": "azurerm_eventhub_namespace",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lz-eventhub",
+          "resource_group_name": "lz-messaging-rg",
+          "location": "northeurope",
+          "sku": "Standard",
+          "capacity": 2
+        }
+      }
+    },
+    {
+      "address": "module.aks.azurerm_kubernetes_cluster.main",
+      "module_address": "module.aks",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster",
+      "name": "main",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-aks",
+          "resource_group_name": "lz-containers-rg",
+          "location": "westeurope",
+          "kubernetes_version": "1.24.9",
+          "default_node_pool": {
+            "name": "default",
+            "node_count": 3,
+            "vm_size": "Standard_DS2_v2"
+          }
+        },
+        "after": {
+          "name": "lz-aks",
+          "resource_group_name": "lz-containers-rg",
+          "location": "northeurope",
+          "kubernetes_version": "1.25.6",
+          "default_node_pool": {
+            "name": "default",
+            "node_count": 5,
+            "vm_size": "Standard_DS3_v2"
+          }
+        }
+      }
+    },
+    {
+      "address": "module.frontdoor.azurerm_frontdoor.main",
+      "module_address": "module.frontdoor",
+      "mode": "managed",
+      "type": "azurerm_frontdoor",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lz-frontdoor",
+          "resource_group_name": "lz-network-rg",
+          "location": "global",
+          "sku_name": "Premium_AzureFrontDoor"
+        }
+      }
+    },
+    {
+      "address": "module.apim.azurerm_api_management.main",
+      "module_address": "module.apim",
+      "mode": "managed",
+      "type": "azurerm_api_management",
+      "name": "main",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-apim",
+          "resource_group_name": "lz-api-rg",
+          "location": "westeurope",
+          "sku_name": "Developer_1"
+        },
+        "after": {
+          "name": "lz-apim",
+          "resource_group_name": "lz-api-rg",
+          "location": "northeurope",
+          "sku_name": "Premium_1"
+        }
+      }
+    },
+    {
+      "address": "module.bastion.azurerm_bastion_host.main",
+      "module_address": "module.bastion",
+      "mode": "managed",
+      "type": "azurerm_bastion_host",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lz-bastion",
+          "resource_group_name": "lz-network-rg",
+          "location": "northeurope",
+          "sku": "Standard"
+        }
+      }
+    },
+    {
+      "address": "module.monitor.azurerm_monitor_action_group.critical",
+      "module_address": "module.monitor",
+      "mode": "managed",
+      "type": "azurerm_monitor_action_group",
+      "name": "critical",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "lz-critical-alerts",
+          "resource_group_name": "lz-monitor-rg",
+          "short_name": "critical"
+        },
+        "after": {
+          "name": "lz-critical-alerts",
+          "resource_group_name": "lz-monitor-rg",
+          "short_name": "critical",
+          "enabled": true
+        }
+      }
+    },
+    {
+      "address": "module.storage.azurerm_storage_account.backup",
+      "module_address": "module.storage",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "backup",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lzbackupstorage",
+          "resource_group_name": "lz-storage-rg",
+          "location": "northeurope",
+          "account_tier": "Standard",
+          "account_replication_type": "ZRS"
+        }
+      }
+    },
+    {
+      "address": "module.network.azurerm_virtual_network_peering.hub_spoke",
+      "module_address": "module.network",
+      "mode": "managed",
+      "type": "azurerm_virtual_network_peering",
+      "name": "hub_spoke",
+      "change": {
+        "actions": ["delete"],
+        "before": {
+          "name": "hub-to-spoke",
+          "resource_group_name": "lz-network-rg",
+          "virtual_network_name": "hub-vnet",
+          "remote_virtual_network_id": "/subscriptions/xxx/resourceGroups/lz-network-rg/providers/Microsoft.Network/virtualNetworks/spoke-vnet"
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "module.security.azurerm_security_center_subscription_pricing.main",
+      "module_address": "module.security",
+      "mode": "managed",
+      "type": "azurerm_security_center_subscription_pricing",
+      "name": "main",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "tier": "Free",
+          "resource_type": "VirtualMachines"
+        },
+        "after": {
+          "tier": "Standard",
+          "resource_type": "VirtualMachines"
+        }
+      }
+    },
+    {
+      "address": "module.loadbalancer.azurerm_lb.main",
+      "module_address": "module.loadbalancer",
+      "mode": "managed",
+      "type": "azurerm_lb",
+      "name": "main",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-lb",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope",
+          "sku": "Basic"
+        },
+        "after": {
+          "name": "lz-lb",
+          "resource_group_name": "lz-network-rg",
+          "location": "northeurope",
+          "sku": "Standard"
+        }
+      }
+    },
+    {
+      "address": "module.dns.azurerm_private_dns_zone.main",
+      "module_address": "module.dns",
+      "mode": "managed",
+      "type": "azurerm_private_dns_zone",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "internal.landingzone.com",
+          "resource_group_name": "lz-network-rg"
+        }
+      }
+    },
+    {
+      "address": "module.waf.azurerm_web_application_firewall_policy.main",
+      "module_address": "module.waf",
+      "mode": "managed",
+      "type": "azurerm_web_application_firewall_policy",
+      "name": "main",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "lz-waf-policy",
+          "resource_group_name": "lz-security-rg",
+          "location": "northeurope"
+        }
+      }
+    },
+    {
+      "address": "module.monitor.azurerm_monitor_diagnostic_setting.keyvault",
+      "module_address": "module.monitor",
+      "mode": "managed",
+      "type": "azurerm_monitor_diagnostic_setting",
+      "name": "keyvault",
+      "change": {
+        "actions": ["delete"],
+        "before": {
+          "name": "keyvault-diagnostics",
+          "target_resource_id": "${azurerm_key_vault.main.id}",
+          "log_analytics_workspace_id": "${azurerm_log_analytics_workspace.main.id}"
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "module.backup.azurerm_backup_policy_vm.default",
+      "module_address": "module.backup",
+      "mode": "managed",
+      "type": "azurerm_backup_policy_vm",
+      "name": "default",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "default-policy",
+          "resource_group_name": "lz-backup-rg",
+          "recovery_vault_name": "${azurerm_recovery_services_vault.main.name}"
+        }
+      }
+    },
+    {
+      "address": "module.network.azurerm_route_table.main",
+      "module_address": "module.network",
+      "mode": "managed",
+      "type": "azurerm_route_table",
+      "name": "main",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "name": "lz-route-table",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope",
+          "disable_bgp_route_propagation": false
+        },
+        "after": {
+          "name": "lz-route-table",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope",
+          "disable_bgp_route_propagation": true
+        }
+      }
+    },
+    {
+      "address": "module.network.azurerm_network_security_group.app",
+      "module_address": "module.network",
+      "mode": "managed",
+      "type": "azurerm_network_security_group",
+      "name": "app",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": {
+          "name": "lz-app-nsg",
+          "resource_group_name": "lz-network-rg",
+          "location": "westeurope"
+        },
+        "after": {
+          "name": "lz-app-nsg",
+          "resource_group_name": "lz-network-rg",
+          "location": "northeurope"
+        }
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "azurerm": {
+        "name": "azurerm",
+        "version_constraint": "~> 3.0"
+      }
+    }
+  }
+} 
