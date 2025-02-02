@@ -108,6 +108,31 @@ The configuration file allows you to define:
 
 ## Example Output
 
+### Default Output (without --show-module)
+```
+Infrastructure Change Analysis
+==============================
+Total Changes: 5
+Create: 2
+Update: 2
+Delete: 1
+
+Risk Assessment:
+High Risks:
+- High risk: Security-related configuration change
+Medium Risks:
+- Medium risk: Version change could cause compatibility issues
+
+Resource Details:
+CREATE aws_s3_bucket: project-storage-[REDACTED]
+UPDATE aws_security_group: app-sg-[REDACTED]
+  ~ ingress = [] -> [{port = 443}]
+UPDATE aws_ecs_service: api-service
+DELETE aws_iam_role: legacy-role
+CREATE aws_lambda_function: processor-function
+```
+
+### With Module Grouping (--show-module)
 ```
 Infrastructure Change Analysis
 ==============================
