@@ -1,10 +1,14 @@
 import json
 import logging
 import os
-from typing import Dict, List
-from .policy import PolicyDBManager
+from typing import Dict, List, Type, Any
+from .db.manager import DBManager
+from .analyzer import AnalyzerInterface, AnalyzerResult
+from .reporter import ReporterInterface
 
 class Context:
+    """Application context that manages analyzers and configuration."""
+    
     def __init__(self, config_path: str = None, debug: bool = False):
         self.config_path = config_path
         self.debug = debug
@@ -17,13 +21,84 @@ class Context:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         
-        # Initialize configuration attributes
+        # Initialize components
         self.sensitive_patterns = []
-        self.risk_rules = {}
         self.config = {}
+        self.db_manager = DBManager()
         
-        # Initialize policy database
-        self.policy_db = PolicyDBManager()
+        # Initialize analyzer registry
+        self._analyzers: Dict[str, List[AnalyzerInterface]] = {}
+        self._reporters: Dict[str, List[ReporterInterface]] = {}
+        self.plan_data = None
+
+    def register_analyzer(self, analyzer: AnalyzerInterface) -> None:
+        """Register an analyzer in its category.
+        
+        Args:
+            analyzer: Analyzer instance implementing AnalyzerInterface
+        """
+        if not isinstance(analyzer, AnalyzerInterface):
+            raise ValueError("Analyzer must implement AnalyzerInterface")
+            
+        category = analyzer.category
+        if category not in self._analyzers:
+            self._analyzers[category] = []
+            
+        if analyzer not in self._analyzers[category]:
+            self.logger.debug(f"Registering analyzer {analyzer.__class__.__name__} for category {category}")
+            self._analyzers[category].append(analyzer)
+    
+    def get_analyzers(self, category: str) -> List[AnalyzerInterface]:
+        """Get all registered analyzers for a category.
+        
+        Args:
+            category: Analyzer category to retrieve
+            
+        Returns:
+            List of registered analyzers for the category
+        """
+        return self._analyzers.get(category, [])
+    
+    def run_analyzers(self, category: str, **kwargs) -> List[AnalyzerResult]:
+        """Run all analyzers for a specific category.
+        
+        Args:
+            category: Category of analyzers to run
+            **kwargs: Additional arguments to pass to analyzers
+            
+        Returns:
+            List of analyzer results
+        """
+        results = []
+        analyzers = self.get_analyzers(category)
+        
+        for analyzer in analyzers:
+            try:
+                self.logger.debug(f"Running analyzer {analyzer.__class__.__name__}")
+                result = analyzer.analyze(self, **kwargs)
+                results.append(result)
+            except Exception as e:
+                self.logger.error(f"Error running analyzer {analyzer.__class__.__name__}: {str(e)}")
+                if self.debug:
+                    self.logger.exception("Detailed error:")
+        
+        return results
+    
+    def set_plan_data(self, plan_data: Dict) -> None:
+        """Store plan data in context.
+        
+        Args:
+            plan_data: Terraform plan data
+        """
+        self.plan_data = plan_data
+    
+    def get_plan_data(self) -> Dict:
+        """Retrieve stored plan data.
+        
+        Returns:
+            Stored Terraform plan data
+        """
+        return self.plan_data
 
     def load_config(self) -> None:
         """Load and merge configuration files"""
@@ -57,13 +132,6 @@ class Context:
                 external_config.get('sensitive_patterns', [])
             )
             
-            # Merge risk rules
-            for severity in ['high', 'medium']:
-                if severity in external_config.get('risk_rules', {}):
-                    self.config['risk_rules'][severity].extend(
-                        external_config['risk_rules'][severity]
-                    )
-            
             self.logger.debug("Successfully merged external config")
         except FileNotFoundError:
             self.logger.error(f"External config file not found: {self.config_path}")
@@ -78,11 +146,45 @@ class Context:
             (rule['pattern'], rule['replacement']) 
             for rule in self.config['sensitive_patterns']
         ]
-        self.risk_rules = {
-            severity: [(rule['pattern'], rule['message']) 
-                      for rule in rules]
-            for severity, rules in self.config['risk_rules'].items()
-        }
         
         self.logger.debug(f"Loaded {len(self.sensitive_patterns)} sensitive patterns")
-        self.logger.debug(f"Loaded risk rules: {self.risk_rules.keys()}")
+
+    def register_reporter(self, reporter: ReporterInterface) -> None:
+        """Register a reporter in its category.
+        
+        Args:
+            reporter: Reporter instance implementing ReporterInterface
+        """
+        if not isinstance(reporter, ReporterInterface):
+            raise ValueError("Reporter must implement ReporterInterface")
+            
+        category = reporter.category
+        if category not in self._reporters:
+            self._reporters[category] = []
+            
+        if reporter not in self._reporters[category]:
+            self.logger.debug(f"Registering reporter {reporter.__class__.__name__} for category {category}")
+            self._reporters[category].append(reporter)
+
+    def get_reporters(self, category: str) -> List[ReporterInterface]:
+        """Get all registered reporters for a category."""
+        return self._reporters.get(category, [])
+
+    def run_reports(self, category: str, data: Any, **kwargs) -> None:
+        """Run all reporters for a specific category.
+        
+        Args:
+            category: Category of reporters to run
+            data: Data to report
+            **kwargs: Additional arguments to pass to reporters
+        """
+        reporters = self.get_reporters(category)
+        
+        for reporter in reporters:
+            try:
+                self.logger.debug(f"Running reporter {reporter.__class__.__name__}")
+                reporter.print_report(data, **kwargs)
+            except Exception as e:
+                self.logger.error(f"Error running reporter {reporter.__class__.__name__}: {str(e)}")
+                if self.debug:
+                    self.logger.exception("Detailed error:")

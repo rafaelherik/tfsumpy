@@ -1,12 +1,12 @@
 # Policy Schema Definition
 type: object
 required:
-  - version
+  - provider
   - policies
 properties:
-  version:
+  provider:
     type: string
-    pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    enum: [aws, azure, gcp]
   policies:
     type: array
     items:
@@ -14,6 +14,7 @@ properties:
       required:
         - id
         - name
+        - description
         - provider
         - resource_type
         - severity
@@ -21,19 +22,20 @@ properties:
       properties:
         id:
           type: string
-          pattern: "^[A-Z0-9_]+$"
         name:
           type: string
         description:
           type: string
         provider:
           type: string
-          enum: [aws, azure, gcp, any]
         resource_type:
           type: string
         severity:
           type: string
           enum: [high, medium, low]
+        disabled:
+          type: boolean
+          default: false
         condition:
           type: object
           required:
@@ -45,6 +47,5 @@ properties:
               enum: [attribute_check, attribute_change, resource_count]
             parameters:
               type: object
-              additionalProperties: true
         remediation:
           type: string 

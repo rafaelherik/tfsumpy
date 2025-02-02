@@ -11,172 +11,172 @@ TFSumPy is a Python-based tool that analyzes Terraform plan files to provide a c
 
 ## Features
 
-- 🔍 Analyzes Terraform plan JSON output
-- ⚠️ Identifies high-risk changes (deletions of critical resources, security group modifications)
-- 🔒 Automatically redacts sensitive information (credentials, IPs, resource names)
-- 📊 Provides clear summary statistics
-- 🛡️ Supports Terraform 1.0+ plan formats
-- 📂 Module-aware resource grouping
+- 🔍 Detailed plan analysis with change breakdown
+- 📊 Clear summary statistics for resource changes
+- 🔒 Automatic sensitive information redaction
+- 🛡️ Risk assessment for infrastructure changes
+- 📋 Policy compliance checking
+- 🎨 Color-coded output for better readability
 - 🔄 Detailed attribute change tracking
 
 ## Installation
 
-Currently, TFSumPy can only be installed from source:
-
+Install using pip:
 ```bash
-git clone https://github.com/rafaelherik/tfsumpy.git
-cd tfsumpy
-pip install .
+    pip install tfsumpy
 ```
-
+Or install from source:
+```bash
+    git clone https://github.com/rafaelherik/tfsumpy.git
+    cd tfsumpy
+    pip install .
+```
 ## Usage
 
-First, generate a Terraform plan JSON file:
+### Basic Usage
 
+1. Generate a Terraform plan JSON file:
 ```bash
-terraform plan -out=tfplan
-terraform show -json tfplan > plan.json
+    terraform plan -out=tfplan
+    terraform show -json tfplan > plan.json
 ```
 
-Then analyze the plan using TFSumPy:
+2. Analyze the plan:
 
+Basic summary:
 ```bash
-# Basic usage
-tfsumpy plan.json
-
-# Show resources grouped by module
-tfsumpy plan.json --show-module
-
-# Show detailed attribute changes
-tfsumpy plan.json --show-changes
-
-# Using custom rules configuration
-tfsumpy plan.json --config rules_config.json
-
-# Enable debug logging
-tfsumpy plan.json --debug
-
-# Show only specific sections
-tfsumpy plan.json --risks --details
+    tfsumpy plan.json
 ```
 
-### Command Line Options
+Show detailed changes:
+```bash
+    tfsumpy plan.json --changes
+```
 
-- `--show-module`: Group resources by their Terraform module
-- `--show-changes`: Display detailed attribute changes for resources
-- `--risks`: Show only the risk assessment section
-- `--details`: Show only the resource details section
-- `--debug`: Enable debug logging
-- `--config`: Specify a custom rules configuration file
+Show resource details:
+```bash
+    tfsumpy plan.json --details
+```
 
-### Custom Rules Configuration
+Enable risk assessment:
+```bash
+    tfsumpy plan.json --risks
+```
 
-You can customize the analysis rules by creating a JSON configuration file. Here's an example structure:
+Enable policy compliance check:
+```bash
+    tfsumpy plan.json --policies
+```
+
+### Example Output
+
+```bash
+    Terraform Plan Analysis
+    ======================
+    Total Changes: 3
+    Create: 1
+    Update: 1
+    Delete: 1
+
+    Resource Changes:
+    CREATE aws_s3_bucket: data_bucket
+      + bucket = "new-bucket"
+
+    UPDATE aws_instance: web_server
+      ~ instance_type = t2.micro -> t2.small
+
+    DELETE aws_security_group: old_sg
+      - name = "old-sg"
+```
+### Advanced Features
+
+1. Risk Assessment:
+
+```bash
+    tfsumpy plan.json --risks
+```
+
+This will show:
+- High and medium risk changes
+- Impact assessment
+- Mitigation suggestions
+
+2. Policy Compliance:
+
+```bash
+    tfsumpy plan.json --policies
+```
+
+Checks resources against:
+- Security best practices
+- Compliance requirements
+- Custom policy rules
+
+3. Detailed Analysis:
+
+```bash
+    tfsumpy plan.json --changes --details --risks
+```
+
+### Configuration
+
+Create a custom configuration file (config.json):
 
 ```json
-{
-  "sensitive_patterns": [
     {
-      "pattern": "\\bAKIA[0-9A-Z]{16}\\b",
-      "replacement": "[AWS-KEY-REDACTED]"
-    },
-    {
-      "pattern": "\\b(password|secret|token)\\b[\"']?:?[\\s\"']+[^\\s\"']+",
-      "replacement": "[SECRET-REDACTED]"
+      "sensitive_patterns": [
+        {
+          "pattern": "\\b(?:password|secret|key)\\b",
+          "replacement": "[REDACTED]"
+        }
+      ],
+      "risk_rules": {
+        "high": [
+          {
+            "pattern": "\\bdelete\\b.*\\b(database|storage)\\b",
+            "message": "Critical resource deletion"
+          }
+        ]
+      }
     }
-  ],
-  "risk_rules": {
-    "high": [
-      {
-        "pattern": "\\bdelete\\b.*\\b(database|storage)\\b",
-        "message": "High risk: Critical storage resource deletion detected"
-      }
-    ],
-    "medium": [
-      {
-        "pattern": "\\bcreate\\b.*\\b(bucket|storage)\\b.*public:\\s*true",
-        "message": "Medium risk: Public storage resource being created"
-      }
-    ]
-  }
-}
 ```
 
-The configuration file allows you to define:
-- `sensitive_patterns`: Regular expressions to identify and redact sensitive information
-- `risk_rules`: Patterns to identify high and medium risk changes
+Use the configuration:
 
-## Example Output
-
-### Default Output (without --show-module)
-```
-Infrastructure Change Analysis
-==============================
-Total Changes: 5
-Create: 2
-Update: 2
-Delete: 1
-
-Risk Assessment:
-High Risks:
-- High risk: Security-related configuration change
-Medium Risks:
-- Medium risk: Version change could cause compatibility issues
-
-Resource Details:
-CREATE aws_s3_bucket: project-storage-[REDACTED]
-UPDATE aws_security_group: app-sg-[REDACTED]
-  ~ ingress = [] -> [{port = 443}]
-UPDATE aws_ecs_service: api-service
-DELETE aws_iam_role: legacy-role
-CREATE aws_lambda_function: processor-function
+```bash
+    tfsumpy plan.json --config config.json
 ```
 
-### With Module Grouping (--show-module)
+### Debug Mode
+
+For troubleshooting or detailed logging:
+
+```bash
+    tfsumpy plan.json --debug
 ```
-Infrastructure Change Analysis
-==============================
-Total Changes: 5
-Create: 2
-Update: 2
-Delete: 1
 
-Changes by Module:
-root:
-  Create: 1
-  Update: 1
-module.storage:
-  Create: 1
-  Update: 1
-  Delete: 1
-
-Risk Assessment:
-High Risks:
-- High risk: Security-related configuration change
-Medium Risks:
-- Medium risk: Version change could cause compatibility issues
-
-Resource Details:
-Module: root
-  CREATE aws_s3_bucket: project-storage-[REDACTED]
-  UPDATE aws_security_group: app-sg-[REDACTED]
-    ~ ingress = [] -> [{port = 443}]
-
-Module: module.storage
-  UPDATE aws_ecs_service: api-service
-  DELETE aws_iam_role: legacy-role
-  CREATE aws_lambda_function: processor-function
-```
+This will:
+- Enable verbose logging
+- Show detailed error messages
+- Display analysis process information
 
 ## Requirements
 
 - Python 3.10 or higher
-- Terraform 1.0 or higher (for plan generation)
+- Terraform 1.0 or higher
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. Visit our [GitHub repository](https://github.com/rafaelherik/tfsumpy) for more information.
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes:
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+Please make sure to update tests as appropriate.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
