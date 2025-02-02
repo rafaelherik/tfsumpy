@@ -5,6 +5,7 @@ import os
 from typing import Dict, List
 from .resource import ResourceChange
 from .context import Context
+from .policy import Policy
 
 class LocalPlanAnalyzer:
     def __init__(self, context: Context):
@@ -78,28 +79,102 @@ class LocalPlanAnalyzer:
             raise ValueError("Invalid JSON plan format")
 
     def _analyze_risks(self, changes: List[ResourceChange]) -> Dict[str, List[str]]:
-        """Identify risks using predefined rules"""
+        """Identify risks using predefined rules and cloud-specific policies"""
         self.logger.debug("Starting risk analysis")
-        findings = {'high': [], 'medium': []}
+        findings = {'high': [], 'medium': [], 'low': []}
         
-        text_plan = ""
-        for c in changes:
-            action = c.action.lower()
-            line = f"{action} {c.resource_type} {c.identifier}\n"
-            text_plan += line
-            self.logger.debug(f"Added plan line: {line.strip()}")
-        
-        self.logger.debug(f"Complete plan text for analysis:\n{text_plan}")
-        
-        for severity in ['high', 'medium']:
-            self.logger.debug(f"Checking {severity} risk patterns")
-            for pattern, message in self.risk_rules[severity]:
-                if re.search(pattern, text_plan, re.IGNORECASE):
-                    self.logger.debug(f"Found match for pattern: {pattern}")
-                    self.logger.debug(f"Adding risk: {message}")
-                    findings[severity].append(message)
+        # Get policies for the changes
+        for change in changes:
+            # Determine provider from resource type
+            provider = self._detect_provider(change.resource_type)
+            
+            # Get relevant policies
+            policies = self.context.policy_db.get_policies(
+                provider=provider,
+                resource_type=change.resource_type
+            )
+            
+            # Evaluate each policy
+            for policy in policies:
+                if self._evaluate_policy(change, policy):
+                    message = f"{policy.name}: {policy.description}"
+                    if policy.remediation:
+                        message += f"\nRemediation: {policy.remediation}"
+                    findings[policy.severity].append(message)
         
         return findings
+
+    def _detect_provider(self, resource_type: str) -> str:
+        """Detect the cloud provider from resource type."""
+        provider_prefixes = {
+            'aws_': 'aws',
+            'azurerm_': 'azure',
+            'google_': 'gcp'
+        }
+        
+        for prefix, provider in provider_prefixes.items():
+            if resource_type.startswith(prefix):
+                return provider
+        return 'unknown'
+
+    def _evaluate_policy(self, change: ResourceChange, policy: Policy) -> bool:
+        """Evaluate if a change violates a policy."""
+        condition = policy.condition
+        
+        if condition['type'] == 'attribute_check':
+            return self._evaluate_attribute_check(change, condition['parameters'])
+        elif condition['type'] == 'attribute_change':
+            return self._evaluate_attribute_change(change, condition['parameters'])
+        elif condition['type'] == 'resource_count':
+            return self._evaluate_resource_count(change, condition['parameters'])
+        
+        return False
+
+    def _evaluate_attribute_check(self, change: ResourceChange, parameters: Dict) -> bool:
+        """Evaluate if a resource change violates an attribute check policy.
+        
+        Args:
+            change: The resource change to evaluate
+            parameters: Policy condition parameters
+        
+        Returns:
+            bool: True if policy is violated, False otherwise
+        """
+        try:
+            attribute = parameters.get('attribute')
+            expected_value = parameters.get('value')
+            
+            if not attribute or expected_value is None:
+                self.logger.warning("Invalid policy parameters: missing attribute or value")
+                return False
+            
+            # For create/update actions, check the 'after' state
+            if change.action in ['create', 'update']:
+                actual_value = change.after.get(attribute)
+                # Policy is violated if the actual value doesn't match expected
+                return actual_value != expected_value
+                
+            # For delete actions, check the 'before' state
+            elif change.action == 'delete':
+                actual_value = change.before.get(attribute)
+                # For deletions, policy is violated if the value matched (we're removing a compliant resource)
+                return actual_value == expected_value
+                
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error evaluating attribute check: {str(e)}")
+            return False
+
+    def _evaluate_attribute_change(self, change: ResourceChange, parameters: Dict) -> bool:
+        """Evaluate an attribute change condition."""
+        # Implementation for attribute change evaluation
+        return False
+
+    def _evaluate_resource_count(self, change: ResourceChange, parameters: Dict) -> bool:
+        """Evaluate a resource count condition."""
+        # Implementation for resource count evaluation
+        return False
 
     def generate_report(self, plan_path: str) -> Dict:
         """Process plan file and generate report"""
@@ -124,139 +199,3 @@ class LocalPlanAnalyzer:
             },
             'risks': risks
         }
-
-    # Class constants for ANSI colors
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-
-    SEVERITY_COLORS = {
-        'high': RED,
-        'medium': YELLOW
-    }
-
-    ACTION_COLORS = {
-        'create': GREEN,
-        'update': YELLOW,
-        'delete': RED
-    }
-
-    def print_report(self, report: Dict, show_module: bool = False, show_changes: bool = False) -> None:
-        """
-        Format and print the infrastructure change analysis report.
-        
-        Args:
-            report (Dict): Analysis report containing summary and risks
-            show_module (bool): Whether to show resources grouped by module
-            show_changes (bool): Whether to show detailed attribute changes
-        """
-        self._print_header()
-        self._print_change_summary(report['summary'], show_module)
-        self._print_risk_assessment(report['risks'])
-        self._print_resource_details(report['summary']['resources'], show_module, show_changes)
-
-    def _print_header(self) -> None:
-        """Print the report header with formatting."""
-        print("=" * 30)
-        print(f"{self.BOLD}Infrastructure Change Analysis{self.RESET}")
-        print("=" * 30)
-
-    def _print_change_summary(self, summary: Dict, show_module: bool) -> None:
-        """Print the summary of changes with color coding and module grouping."""
-        print(f"\n{self.BOLD}Total Changes: {summary['total_changes']}{self.RESET}")
-        
-        # Group changes by module
-        module_changes = {}
-        for resource in summary['resources']:
-            module = resource.get('module', 'root')
-            if module not in module_changes:
-                module_changes[module] = {'create': 0, 'update': 0, 'delete': 0}
-            module_changes[module][resource['action'].lower()] += 1
-        
-        # Print overall summary
-        for action, color in [
-            ('create', self.GREEN),
-            ('update', self.YELLOW),
-            ('delete', self.RED)
-        ]:
-            count = summary['change_breakdown'][action]
-            print(f"{color}{action.title()}: {self.RESET}{count}")
-        
-        # Print per-module breakdown only if show_module is True and there are multiple modules
-        if show_module and len(module_changes) > 1:
-            print(f"\n{self.BOLD}Changes by Module:{self.RESET}")
-            for module, changes in module_changes.items():
-                print(f"\n{self.BOLD}{module}:{self.RESET}")
-                for action, color in [
-                    ('create', self.GREEN),
-                    ('update', self.YELLOW),
-                    ('delete', self.RED)
-                ]:
-                    count = changes[action]
-                    if count > 0:
-                        print(f"  {color}{action.title()}: {self.RESET}{count}")
-
-    def _print_risk_assessment(self, risks: Dict[str, List[str]]) -> None:
-        """Print risk assessment section with proper formatting."""
-        print(f"\n{self.BOLD}Risk Assessment:{self.RESET}")
-        
-        for severity in ('high', 'medium'):
-            if risks[severity]:
-                color = self.SEVERITY_COLORS[severity]
-                print(f"{color}{severity.title()} Risks:{self.RESET}")
-                for risk in risks[severity]:
-                    print(f" - {risk}\n")
-
-    def _print_resource_details(self, resources: List[Dict], show_module: bool, show_changes: bool) -> None:
-        """Print detailed resource changes with color coding and module grouping."""
-        print(f"\n{self.BOLD}Resource Details:{self.RESET}")
-        
-        # Group resources by module
-        module_resources = {}
-        for resource in resources:
-            module = resource.get('module', 'root')
-            if module not in module_resources:
-                module_resources[module] = []
-            module_resources[module].append(resource)
-        
-        def print_resource(resource, indent=""):
-            action = resource['action'].lower()
-            color = self.ACTION_COLORS.get(action, '')
-            print(
-                f"{indent}{color}{resource['action'].upper()} {self.RESET}"
-                f"{resource['resource_type']}: {resource['identifier']}"
-                f"{self.RESET}"
-            )
-            
-            if show_changes and 'before' in resource and 'after' in resource:
-                before = resource['before'] or {}
-                after = resource['after'] or {}
-                
-                # Get all unique keys from both before and after
-                all_keys = set(before.keys()) | set(after.keys())
-                
-                # Skip internal keys
-                skip_keys = {'id', 'tags_all'}
-                
-                for key in sorted(all_keys - skip_keys):
-                    before_val = before.get(key)
-                    after_val = after.get(key)
-                    
-                    if before_val != after_val:
-                        if action == 'create':
-                            print(f"{indent}  + {key} = {after_val}")
-                        elif action == 'delete':
-                            print(f"{indent}  - {key} = {before_val}")
-                        else:  # update
-                            print(f"{indent}  ~ {key} = {before_val} -> {after_val}")
-        
-        if show_module:
-            for module, module_resources_list in module_resources.items():
-                print(f"\n{self.BOLD}Module: {module}{self.RESET}")
-                for resource in module_resources_list:
-                    print_resource(resource, "  ")
-        else:
-            for resource in resources:
-                print_resource(resource)

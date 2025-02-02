@@ -1,0 +1,50 @@
+# Policy Schema Definition
+type: object
+required:
+  - version
+  - policies
+properties:
+  version:
+    type: string
+    pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  policies:
+    type: array
+    items:
+      type: object
+      required:
+        - id
+        - name
+        - provider
+        - resource_type
+        - severity
+        - condition
+      properties:
+        id:
+          type: string
+          pattern: "^[A-Z0-9_]+$"
+        name:
+          type: string
+        description:
+          type: string
+        provider:
+          type: string
+          enum: [aws, azure, gcp, any]
+        resource_type:
+          type: string
+        severity:
+          type: string
+          enum: [high, medium, low]
+        condition:
+          type: object
+          required:
+            - type
+            - parameters
+          properties:
+            type:
+              type: string
+              enum: [attribute_check, attribute_change, resource_count]
+            parameters:
+              type: object
+              additionalProperties: true
+        remediation:
+          type: string 

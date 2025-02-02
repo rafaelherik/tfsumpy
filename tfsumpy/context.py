@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from typing import Dict, List
+from .policy import PolicyDBManager
 
 class Context:
     def __init__(self, config_path: str = None, debug: bool = False):
@@ -20,6 +21,9 @@ class Context:
         self.sensitive_patterns = []
         self.risk_rules = {}
         self.config = {}
+        
+        # Initialize policy database
+        self.policy_db = PolicyDBManager()
 
     def load_config(self) -> None:
         """Load and merge configuration files"""
