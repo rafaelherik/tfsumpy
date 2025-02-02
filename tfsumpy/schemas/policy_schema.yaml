@@ -1,0 +1,51 @@
+# Policy Schema Definition
+type: object
+required:
+  - provider
+  - policies
+properties:
+  provider:
+    type: string
+    enum: [aws, azure, gcp]
+  policies:
+    type: array
+    items:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - provider
+        - resource_type
+        - severity
+        - condition
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        provider:
+          type: string
+        resource_type:
+          type: string
+        severity:
+          type: string
+          enum: [high, medium, low]
+        disabled:
+          type: boolean
+          default: false
+        condition:
+          type: object
+          required:
+            - type
+            - parameters
+          properties:
+            type:
+              type: string
+              enum: [attribute_check, attribute_change, resource_count]
+            parameters:
+              type: object
+        remediation:
+          type: string 
