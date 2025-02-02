@@ -1,0 +1,29 @@
+provider: aws
+policies:
+  - id: AWS_S3_VERSIONING
+    name: "S3 Bucket Versioning"
+    description: "Ensure S3 buckets have versioning enabled"
+    provider: aws
+    resource_type: aws_s3_bucket
+    severity: high
+    disabled: false
+    condition:
+      type: attribute_check
+      parameters:
+        attribute: versioning
+        value: true
+    remediation: "Enable versioning on the S3 bucket using versioning configuration block"
+
+  - id: AWS_S3_ENCRYPTION
+    name: "S3 Bucket Encryption"
+    description: "Ensure S3 buckets have encryption enabled"
+    provider: aws
+    resource_type: aws_s3_bucket
+    severity: high
+    disabled: false
+    condition:
+      type: attribute_check
+      parameters:
+        attribute: server_side_encryption_configuration
+        exists: true
+    remediation: "Configure server-side encryption using server_side_encryption_configuration block" 
