@@ -78,3 +78,6 @@ Pipfile.lock
 
 # poetry
 poetry.lock
+
+# cursor rules
+.cursorrules

@@ -4,64 +4,19 @@ import logging
 import os
 from typing import Dict, List
 from .resource import ResourceChange
+from .context import Context
 
 class LocalPlanAnalyzer:
-    def __init__(self, config_path: str = None, debug: bool = False):
-        # Configure logging
-        self.logger = logging.getLogger(__name__)
-        log_level = logging.DEBUG if debug else logging.INFO
-        logging.basicConfig(
-            level=log_level,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+    def __init__(self, context: Context):
+        self.context = context
+        self.logger = context.logger
         
-        # Load default config first
-        default_config_path = os.path.join(os.path.dirname(__file__), 'rules_config.json')
-        self.logger.debug(f"Loading default config file: {default_config_path}")
+        # Load configuration through context
+        self.context.load_config()
         
-        try:
-            with open(default_config_path, 'r') as f:
-                config = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            self.logger.error(f"Error loading default config: {str(e)}")
-            raise
-
-        # If external config provided, merge it with default config
-        if config_path:
-            self.logger.debug(f"Merging external config file: {config_path}")
-            try:
-                with open(config_path, 'r') as f:
-                    external_config = json.load(f)
-                    
-                # Merge sensitive patterns
-                config['sensitive_patterns'].extend(external_config.get('sensitive_patterns', []))
-                
-                # Merge risk rules for each severity level
-                for severity in ['high', 'medium']:
-                    if severity in external_config.get('risk_rules', {}):
-                        config['risk_rules'][severity].extend(
-                            external_config['risk_rules'][severity]
-                        )
-                
-                self.logger.debug("Successfully merged external config")
-            except FileNotFoundError:
-                self.logger.error(f"External config file not found: {config_path}")
-                raise
-            except json.JSONDecodeError as e:
-                self.logger.error(f"Error parsing external JSON config file: {str(e)}")
-                raise
-        
-        # Set the configuration
-        self.sensitive_patterns = [(rule['pattern'], rule['replacement']) 
-                                 for rule in config['sensitive_patterns']]
-        self.risk_rules = {
-            severity: [(rule['pattern'], rule['message']) 
-                      for rule in rules]
-            for severity, rules in config['risk_rules'].items()
-        }
-        
-        self.logger.debug(f"Loaded {len(self.sensitive_patterns)} sensitive patterns")
-        self.logger.debug(f"Loaded risk rules: {self.risk_rules.keys()}")
+        # Get configuration from context
+        self.sensitive_patterns = self.context.sensitive_patterns
+        self.risk_rules = self.context.risk_rules
 
     def _sanitize_text(self, text: str) -> str:
         """Remove sensitive data using multiple regex patterns"""
@@ -88,11 +43,33 @@ class LocalPlanAnalyzer:
                 action = change.get('change', {}).get('actions', ['no-op'])[0]
                 if action != 'no-op':
                     self.logger.debug(f"Processing change: {action} on {change.get('type', '')} - {change.get('address', '')}")
+                    # Extract module information from address
+                    address = change.get('address', '')
+                    module_name = 'root'
+                    
+                    # Only try to extract module info if it's a module resource
+                    if 'module.' in address:
+                        module_parts = address.split('.')
+                        # Handle both single and nested modules
+                        module_path = []
+                        for i, part in enumerate(module_parts):
+                            if part == 'module' and i + 1 < len(module_parts):
+                                module_path.append(module_parts[i + 1])
+                        module_name = '.'.join(module_path) if module_path else 'root'
+                    
+                    # Extract before and after states for attribute changes
+                    change_details = change.get('change', {})
+                    before = change_details.get('before', {})
+                    after = change_details.get('after', {})
+                    
                     changes.append(ResourceChange(
                         action=action,
                         resource_type=change.get('type', ''),
-                        identifier=self._sanitize_text(change.get('address', '')),
-                        changes=change.get('change', {}).get('before_sensitive', {})
+                        identifier=self._sanitize_text(address),
+                        changes=change.get('change', {}).get('before_sensitive', {}),
+                        module=module_name,
+                        before=before,
+                        after=after
                     ))
             
             return changes
@@ -148,22 +125,138 @@ class LocalPlanAnalyzer:
             'risks': risks
         }
 
-    def print_report(self, report: Dict):
-        """Format report for CLI output"""
-        print("Infrastructure Change Analysis")
-        print("==============================")
-        print(f"\nTotal Changes: {report['summary']['total_changes']}")
-        print(f"Create: {report['summary']['change_breakdown']['create']}")
-        print(f"Update: {report['summary']['change_breakdown']['update']}")
-        print(f"Delete: {report['summary']['change_breakdown']['delete']}")
+    # Class constants for ANSI colors
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+
+    SEVERITY_COLORS = {
+        'high': RED,
+        'medium': YELLOW
+    }
+
+    ACTION_COLORS = {
+        'create': GREEN,
+        'update': YELLOW,
+        'delete': RED
+    }
+
+    def print_report(self, report: Dict, show_module: bool = False, show_changes: bool = False) -> None:
+        """
+        Format and print the infrastructure change analysis report.
         
-        print("\nRisk Assessment:")
-        for severity in ['high', 'medium']:
-            if report['risks'][severity]:
-                print(f"\n{severity.title()} Risks:")
-                for risk in report['risks'][severity]:
-                    print(f" - {risk}")
+        Args:
+            report (Dict): Analysis report containing summary and risks
+            show_module (bool): Whether to show resources grouped by module
+            show_changes (bool): Whether to show detailed attribute changes
+        """
+        self._print_header()
+        self._print_change_summary(report['summary'], show_module)
+        self._print_risk_assessment(report['risks'])
+        self._print_resource_details(report['summary']['resources'], show_module, show_changes)
+
+    def _print_header(self) -> None:
+        """Print the report header with formatting."""
+        print("=" * 30)
+        print(f"{self.BOLD}Infrastructure Change Analysis{self.RESET}")
+        print("=" * 30)
+
+    def _print_change_summary(self, summary: Dict, show_module: bool) -> None:
+        """Print the summary of changes with color coding and module grouping."""
+        print(f"\n{self.BOLD}Total Changes: {summary['total_changes']}{self.RESET}")
+        
+        # Group changes by module
+        module_changes = {}
+        for resource in summary['resources']:
+            module = resource.get('module', 'root')
+            if module not in module_changes:
+                module_changes[module] = {'create': 0, 'update': 0, 'delete': 0}
+            module_changes[module][resource['action'].lower()] += 1
+        
+        # Print overall summary
+        for action, color in [
+            ('create', self.GREEN),
+            ('update', self.YELLOW),
+            ('delete', self.RED)
+        ]:
+            count = summary['change_breakdown'][action]
+            print(f"{color}{action.title()}: {self.RESET}{count}")
+        
+        # Print per-module breakdown only if show_module is True and there are multiple modules
+        if show_module and len(module_changes) > 1:
+            print(f"\n{self.BOLD}Changes by Module:{self.RESET}")
+            for module, changes in module_changes.items():
+                print(f"\n{self.BOLD}{module}:{self.RESET}")
+                for action, color in [
+                    ('create', self.GREEN),
+                    ('update', self.YELLOW),
+                    ('delete', self.RED)
+                ]:
+                    count = changes[action]
+                    if count > 0:
+                        print(f"  {color}{action.title()}: {self.RESET}{count}")
+
+    def _print_risk_assessment(self, risks: Dict[str, List[str]]) -> None:
+        """Print risk assessment section with proper formatting."""
+        print(f"\n{self.BOLD}Risk Assessment:{self.RESET}")
+        
+        for severity in ('high', 'medium'):
+            if risks[severity]:
+                color = self.SEVERITY_COLORS[severity]
+                print(f"{color}{severity.title()} Risks:{self.RESET}")
+                for risk in risks[severity]:
+                    print(f" - {risk}\n")
+
+    def _print_resource_details(self, resources: List[Dict], show_module: bool, show_changes: bool) -> None:
+        """Print detailed resource changes with color coding and module grouping."""
+        print(f"\n{self.BOLD}Resource Details:{self.RESET}")
+        
+        # Group resources by module
+        module_resources = {}
+        for resource in resources:
+            module = resource.get('module', 'root')
+            if module not in module_resources:
+                module_resources[module] = []
+            module_resources[module].append(resource)
+        
+        def print_resource(resource, indent=""):
+            action = resource['action'].lower()
+            color = self.ACTION_COLORS.get(action, '')
+            print(
+                f"{indent}{color}{resource['action'].upper()} {self.RESET}"
+                f"{resource['resource_type']}: {resource['identifier']}"
+                f"{self.RESET}"
+            )
+            
+            if show_changes and 'before' in resource and 'after' in resource:
+                before = resource['before'] or {}
+                after = resource['after'] or {}
+                
+                # Get all unique keys from both before and after
+                all_keys = set(before.keys()) | set(after.keys())
+                
+                # Skip internal keys
+                skip_keys = {'id', 'tags_all'}
+                
+                for key in sorted(all_keys - skip_keys):
+                    before_val = before.get(key)
+                    after_val = after.get(key)
                     
-        print("\nResource Details:")
-        for resource in report['summary']['resources']:
-            print(f"{resource['action'].upper()} {resource['resource_type']}: {resource['identifier']}")
+                    if before_val != after_val:
+                        if action == 'create':
+                            print(f"{indent}  + {key} = {after_val}")
+                        elif action == 'delete':
+                            print(f"{indent}  - {key} = {before_val}")
+                        else:  # update
+                            print(f"{indent}  ~ {key} = {before_val} -> {after_val}")
+        
+        if show_module:
+            for module, module_resources_list in module_resources.items():
+                print(f"\n{self.BOLD}Module: {module}{self.RESET}")
+                for resource in module_resources_list:
+                    print_resource(resource, "  ")
+        else:
+            for resource in resources:
+                print_resource(resource)
