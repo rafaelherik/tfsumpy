@@ -60,7 +60,7 @@ build: clean
 
 # Sample commands
 run-sample: install
-	$(PYTHON) -m tfsumpy samples/sample1.json --debug
+	$(PYTHON) -m tfsumpy samples/sample1.json --details --changes
 
 debug-sample: install
 	$(PYTHON) -m tfsumpy samples/sample1.json --debug --config tfsumpy/rules_config.json

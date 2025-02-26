@@ -56,4 +56,3 @@ class AWSRiskAnalyzer(ProviderRiskAnalyzer):
             mitigation="Verify all resource dependencies before deletion"
         )]
     
-    # ... implement other check methods similarly ... 
