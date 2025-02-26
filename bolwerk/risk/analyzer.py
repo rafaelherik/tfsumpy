@@ -32,7 +32,7 @@ class RiskAnalyzer(AnalyzerInterface):
 
         for module_info in pkgutil.iter_modules([str(providers_path)]):
             try:
-                module = importlib.import_module(f".providers.{module_info.name}", package="tfsumpy.risk")
+                module = importlib.import_module(f".providers.{module_info.name}", package="bolwerk.risk")
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
                     if (isinstance(attr, type) and 

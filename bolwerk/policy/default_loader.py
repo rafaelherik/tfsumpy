@@ -16,12 +16,12 @@ class DefaultPolicyLoader:
         """Load all default policies from package data."""
         try:
             # Get all policy files from package data
-            policy_files = pkg_resources.resource_listdir('tfsumpy', 'policies')
+            policy_files = pkg_resources.resource_listdir('bolwerk', 'policies')
             
             for filename in policy_files:
                 if filename.endswith('.yaml'):
                     policy_content = pkg_resources.resource_string(
-                        'tfsumpy', f'policies/{filename}'
+                        'bolwerk', f'policies/{filename}'
                     ).decode('utf-8')
                     
                     try:

@@ -1,4 +1,4 @@
-"""Policy module for TFSumPy.
+"""Policy module for bolwerk.
 
 This module provides policy management functionality including policy loading,
 database management, and policy evaluation.
