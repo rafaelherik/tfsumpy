@@ -16,8 +16,8 @@ help:
 	@echo "  make clean        - Remove build artifacts"
 	@echo "  make build        - Build the package"
 	@echo "  make release      - Create a new release (requires VERSION=X.Y.Z)"
-	@echo "  make run-sample   - Run tfsumpy with sample1.json plan file"
-	@echo "  make debug-sample - Run tfsumpy with sample1.json plan file and custom config"
+	@echo "  make run-sample   - Run bolwerk with sample1.json plan file"
+	@echo "  make debug-sample - Run bolwerk with sample1.json plan file and custom config"
 
 # Virtual environment
 venv:
@@ -34,13 +34,13 @@ dev-install: venv
 
 # Development commands
 test: dev-install
-	$(PYTHON) -m pytest tfsumpy/tests/
+	$(PYTHON) -m pytest bolwerk/tests/
 
 
 
 lint: dev-install
-	$(PYTHON) -m pylint tfsumpy
-	$(PYTHON) -m mypy tfsumpy
+	$(PYTHON) -m pylint bolwerk
+	$(PYTHON) -m mypy bolwerk
 
 check: lint test
 
@@ -60,22 +60,22 @@ build: clean
 
 # Sample commands
 run-sample: install
-	$(PYTHON) -m tfsumpy samples/sample1.json --debug
+	$(PYTHON) -m bolwerk samples/sample1.json --details --changes
 
 debug-sample: install
-	$(PYTHON) -m tfsumpy samples/sample1.json --debug --config tfsumpy/rules_config.json
+	$(PYTHON) -m bolwerk samples/sample1.json --debug --config bolwerk/rules_config.json
 
 # Release command (unchanged)
 release: 
 	@echo "Creating release for version $(VERSION)"
 	@# Update version in __init__.py (works on both Linux and macOS)
-	@sed -i.bak "s/__version__ = .*/__version__ = '$(VERSION)'/" tfsumpy/__init__.py && rm -f tfsumpy/__init__.py.bak
+	@sed -i.bak "s/__version__ = .*/__version__ = '$(VERSION)'/" bolwerk/__init__.py && rm -f bolwerk/__init__.py.bak
 	@# Update version in setup.py if it exists
 	@if grep -q "version=" setup.py; then \
 		sed -i.bak "s/version=.*/version='$(VERSION)',/" setup.py && rm -f setup.py.bak; \
 	fi
 	@# Commit changes
-	git add tfsumpy/__init__.py setup.py
+	git add bolwerk/__init__.py setup.py
 	git commit -m "Bump version to $(VERSION)"
 	@# Create and push tag
 	git tag -a v$(VERSION) -m "Release version $(VERSION)" --force

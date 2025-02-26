@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
-from tfsumpy.risk.analyzer import RiskAnalyzer
-from tfsumpy.risk.models import ProviderRiskAnalyzer, RiskFinding, RiskReport
-from tfsumpy.analyzer import AnalyzerResult
+from bolwerk.risk.analyzer import RiskAnalyzer
+from bolwerk.risk.models import ProviderRiskAnalyzer, RiskFinding, RiskReport
+from bolwerk.analyzer import AnalyzerResult
 
 @pytest.fixture
 def mock_provider_analyzer():
@@ -23,7 +23,7 @@ def mock_provider_analyzer():
 @pytest.fixture
 def risk_analyzer():
     """Create RiskAnalyzer instance with mocked provider loading."""
-    with patch('tfsumpy.risk.analyzer.RiskAnalyzer._load_provider_analyzers'):
+    with patch('bolwerk.risk.analyzer.RiskAnalyzer._load_provider_analyzers'):
         return RiskAnalyzer()
 
 @pytest.fixture

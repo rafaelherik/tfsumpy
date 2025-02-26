@@ -1,18 +1,18 @@
 [tool.poetry]
-name = "tfsumpy"
+name = "bolwerk"
 version = "0.0.3"
 description = "A Python tool for Terraform state summary and analysis"
 authors = ["Rafael H de Carvalho <rafaelherik@gmail.com>"]
 readme = "README.md"
-repository = "https://github.com/rafaelherik/tfsumpy"
-documentation = "https://github.com/rafaelherik/tfsumpy"
+repository = "https://github.com/rafaelherik/bolwerk"
+documentation = "https://github.com/rafaelherik/bolwerk"
 keywords = ["terraform", "infrastructure", "cloud", "DevOps"]
 license = "MIT"
-packages = [{include = "tfsumpy"}]
+packages = [{include = "bolwerk"}]
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/rafaelherik/tfsumpy/issues"
-"Source Code" = "https://github.com/rafaelherik/tfsumpy"
+"Bug Tracker" = "https://github.com/rafaelherik/bolwerk/issues"
+"Source Code" = "https://github.com/rafaelherik/bolwerk"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
@@ -27,7 +27,7 @@ pytest-mock = ">=3.6.1"
 coverage = ">=7.2.0"
 
 [tool.poetry.scripts]
-tfsumpy = "tfsumpy.__main__:main"
+bolwerk = "bolwerk.__main__:main"
 
 [build-system]
 requires = ["poetry-core"]

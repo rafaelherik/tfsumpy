@@ -75,12 +75,21 @@ class PlanReporter(BaseReporter, ReporterInterface):
 
     def _print_resource_details(self, resources: list, show_changes: bool = False) -> None:
         """Format the resource details section."""
-        self._write(f"\n{self._colorize('Resource Changes:', 'bold')}\n")
+        self._write(f"\n{self._colorize('Resources Changes:', 'bold')}\n")
+        
+        # Define color mapping for actions
+        action_colors = {
+            'CREATE': 'green',
+            'UPDATE': 'blue',
+            'DELETE': 'red'
+        }
         
         for resource in resources:
             action_str = resource['action'].upper()
+            # Color the action string based on the action type
+            colored_action = self._colorize(action_str, action_colors.get(action_str, 'bold'))
             self._write(
-                f"\n{action_str} {resource['resource_type']}: "
+                f"\n{colored_action} {resource['resource_type']}: "
                 f"{resource['identifier']}\n"
             )
             
@@ -97,16 +106,26 @@ class PlanReporter(BaseReporter, ReporterInterface):
         all_attrs = set(before.keys()) | set(after.keys())
         skip_attrs = {'id', 'tags_all'}  # Skip internal attributes
         
+        # Define color mapping for symbols
+        symbol_colors = {
+            '+': 'green',   # create
+            '~': 'blue',    # update
+            '-': 'red'      # delete
+        }
+        
         for attr in sorted(all_attrs - skip_attrs):
             before_val = before.get(attr)
             after_val = after.get(attr)
             
             if before_val != after_val:
                 if resource['action'] == 'create':
-                    lines.append(f"  + {attr} = {after_val}")
+                    symbol = self._colorize('+', symbol_colors['+'])
+                    lines.append(f"  {symbol} {attr} = {after_val}")
                 elif resource['action'] == 'delete':
-                    lines.append(f"  - {attr} = {before_val}")
+                    symbol = self._colorize('-', symbol_colors['-'])
+                    lines.append(f"  {symbol} {attr} = {before_val}")
                 else:  # update
-                    lines.append(f"  ~ {attr} = {before_val} -> {after_val}")
+                    symbol = self._colorize('~', symbol_colors['~'])
+                    lines.append(f"  {symbol} {attr} = {before_val} -> {after_val}")
         
         self._write('\n'.join(lines)) 

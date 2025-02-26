@@ -1,15 +1,19 @@
-from typing import Dict, List, Optional
+import logging
+from pathlib import Path
+
+def __init__(self, db_path: str = None):
+ 
 import sqlite3
 from pathlib import Path
 import json
 import logging
 
 class DBManager:
-    """Global database manager for TFSumPy."""
+    """Global database manager for bolwerk."""
     
     def __init__(self, db_path: str = None):
         if not db_path:
-            db_path = str(Path.home() / '.tfsumpy' / 'tfsumpy.db')
+            db_path = str(Path.home() / '.bolwerk' / 'bolwerk.db')
         
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self.db_path = db_path

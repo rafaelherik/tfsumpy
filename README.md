@@ -1,8 +1,8 @@
-# TFSumPy - Terraform Plan Analyzer
+# bolwerk - Terraform Plan Analyzer
 
-[![CI](https://github.com/rafaelherik/tfsumpy/actions/workflows/ci.yaml/badge.svg)](https://github.com/rafaelherik/tfsumpy/actions/workflows/ci.yaml)
+[![CI](https://github.com/rafaelherik/bolwerk/actions/workflows/ci.yaml/badge.svg)](https://github.com/rafaelherik/bolwerk/actions/workflows/ci.yaml)
 
-TFSumPy is a Python-based tool that analyzes Terraform plan files to provide a clear summary of infrastructure changes and identify potential risks. It helps DevOps teams review infrastructure changes more effectively by:
+bolwerk is a Python-based tool that analyzes Terraform plan files to provide a clear summary of infrastructure changes and identify potential risks. It helps DevOps teams review infrastructure changes more effectively by:
 
 - Summarizing resource changes (create, update, delete)
 - Identifying high and medium risk changes
@@ -23,12 +23,12 @@ TFSumPy is a Python-based tool that analyzes Terraform plan files to provide a c
 
 Install using pip:
 ```bash
-    pip install tfsumpy
+    pip install bolwerk
 ```
 Or install from source:
 ```bash
-    git clone https://github.com/rafaelherik/tfsumpy.git
-    cd tfsumpy
+    git clone https://github.com/rafaelherik/bolwerk.git
+    cd bolwerk
     pip install .
 ```
 ## Usage
@@ -45,27 +45,27 @@ Or install from source:
 
 Basic summary:
 ```bash
-    tfsumpy plan.json
+    bolwerk plan.json
 ```
 
 Show detailed changes:
 ```bash
-    tfsumpy plan.json --changes
+    bolwerk plan.json --changes
 ```
 
 Show resource details:
 ```bash
-    tfsumpy plan.json --details
+    bolwerk plan.json --details
 ```
 
 Enable risk assessment:
 ```bash
-    tfsumpy plan.json --risks
+    bolwerk plan.json --risks
 ```
 
 Enable policy compliance check:
 ```bash
-    tfsumpy plan.json --policies
+    bolwerk plan.json --policies
 ```
 
 ### Example Output
@@ -93,7 +93,7 @@ Enable policy compliance check:
 1. Risk Assessment:
 
 ```bash
-    tfsumpy plan.json --risks
+    bolwerk plan.json --risks
 ```
 
 This will show:
@@ -104,7 +104,7 @@ This will show:
 2. Policy Compliance:
 
 ```bash
-    tfsumpy plan.json --policies
+    bolwerk plan.json --policies
 ```
 
 Checks resources against:
@@ -115,7 +115,7 @@ Checks resources against:
 3. Detailed Analysis:
 
 ```bash
-    tfsumpy plan.json --changes --details --risks
+    bolwerk plan.json --changes --details --risks
 ```
 
 ### Configuration
@@ -144,7 +144,7 @@ Create a custom configuration file (config.json):
 Use the configuration:
 
 ```bash
-    tfsumpy plan.json --config config.json
+    bolwerk plan.json --config config.json
 ```
 
 ### Debug Mode
@@ -152,7 +152,7 @@ Use the configuration:
 For troubleshooting or detailed logging:
 
 ```bash
-    tfsumpy plan.json --debug
+    bolwerk plan.json --debug
 ```
 
 This will:
