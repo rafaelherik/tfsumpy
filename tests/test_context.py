@@ -2,9 +2,9 @@ import pytest
 import json
 import tempfile
 from unittest.mock import Mock, patch
-from tfsumpy.context import Context
-from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult
-from tfsumpy.reporter import ReporterInterface
+from bolwerk.context import Context
+from bolwerk.analyzer import AnalyzerInterface, AnalyzerResult
+from bolwerk.reporter import ReporterInterface
 
 @pytest.fixture
 def mock_analyzer():

@@ -1,6 +1,6 @@
 import pytest
-from tfsumpy.policy.evaluator import PolicyEvaluator
-from tfsumpy.policy.models import PolicyResult
+from bolwerk.policy.evaluator import PolicyEvaluator
+from bolwerk.policy.models import PolicyResult
 
 @pytest.fixture
 def evaluator():

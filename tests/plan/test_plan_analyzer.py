@@ -1,9 +1,9 @@
 import pytest
 import json
 from unittest.mock import Mock, patch, mock_open
-from tfsumpy.plan.analyzer import PlanAnalyzer
-from tfsumpy.analyzer import AnalyzerResult
-from tfsumpy.resource import ResourceChange
+from bolwerk.plan.analyzer import PlanAnalyzer
+from bolwerk.analyzer import AnalyzerResult
+from bolwerk.resource import ResourceChange
 
 @pytest.fixture
 def mock_context():

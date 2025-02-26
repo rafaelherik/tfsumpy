@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
-from tfsumpy.policy.analyzer import PolicyAnalyzer, PolicyReport, PolicyResult
-from tfsumpy.analyzer import AnalyzerResult
+from bolwerk.policy.analyzer import PolicyAnalyzer, PolicyReport, PolicyResult
+from bolwerk.analyzer import AnalyzerResult
 
 @pytest.fixture
 def mock_db_manager():

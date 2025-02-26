@@ -9,7 +9,7 @@ from .context import Context
 from .policy.loader import PolicyLoader
 from .policy.models import PolicyResult 
 
-__version__ = '0.0.3'
+__version__ = '0.4.0'
 
 __all__ = ['PlanAnalyzer', 'ResourceChange', 'Context',
            'PolicyLoader', 'PlanReporter', 'RiskAnalyzer', 'RiskReporter', 'PolicyAnalyzer', 'PolicyReporter', 'PolicyResult']

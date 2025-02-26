@@ -4,7 +4,7 @@ import tempfile
 import os
 from pathlib import Path
 from unittest.mock import Mock, patch
-from tfsumpy.policy.loader import PolicyLoader
+from bolwerk.policy.loader import PolicyLoader
 from jsonschema import ValidationError
 
 @pytest.fixture

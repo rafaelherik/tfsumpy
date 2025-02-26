@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from tfsumpy.plan.reporter import PlanReporter
+from bolwerk.plan.reporter import PlanReporter
 
 @pytest.fixture
 def reporter():

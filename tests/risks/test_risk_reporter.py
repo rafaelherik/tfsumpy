@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
-from tfsumpy.risk.reporter import RiskReporter
-from tfsumpy.risk.models import RiskFinding, RiskReport
+from bolwerk.risk.reporter import RiskReporter
+from bolwerk.risk.models import RiskFinding, RiskReport
 
 @pytest.fixture
 def reporter():

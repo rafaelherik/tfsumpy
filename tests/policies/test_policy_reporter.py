@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import Mock, patch
 from colorama import Fore, Style, init
-from tfsumpy.policy.reporter import PolicyReporter
-from tfsumpy.policy.models import PolicyResult, PolicyReport
+from bolwerk.policy.reporter import PolicyReporter
+from bolwerk.policy.models import PolicyResult, PolicyReport
 
 @pytest.fixture
 def reporter():
