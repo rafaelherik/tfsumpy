@@ -4,7 +4,7 @@ repo_url: https://github.com/rafaelherik/bolwerk
 repo_name: rafaelherik/bolwerk
 
 theme:
-  name: material
+  name: readthedocs
   features:
     - navigation.tabs
     - navigation.sections
