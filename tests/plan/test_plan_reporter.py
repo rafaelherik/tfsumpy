@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from bolwerk.plan.reporter import PlanReporter
+import re
 
 @pytest.fixture
 def reporter():
@@ -81,11 +82,15 @@ class TestPlanReporter:
 
     def test_print_report_with_details(self, reporter, sample_report_data):
         """Test report printing with resource details."""
+        def strip_ansi(text):
+            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            return ansi_escape.sub('', text)
+
         with patch.object(reporter, '_write') as mock_write:
             reporter.print_report(sample_report_data, show_details=True)
             
-            # Collect all written strings
-            written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
+            # Collect all written strings and strip ANSI codes
+            written_text = strip_ansi(''.join(call[0][0] for call in mock_write.call_args_list))
             
             # Verify resource details without color expectations
             for expected in [
@@ -123,6 +128,11 @@ class TestPlanReporter:
 
     def test_attribute_changes_formatting(self, reporter):
         """Test attribute changes formatting."""
+        # Helper function to strip ANSI escape codes
+        def strip_ansi(text):
+            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            return ansi_escape.sub('', text)
+
         resource = {
             "action": "update",
             "before": {"name": "old", "tags": {"env": "dev"}},
@@ -132,8 +142,12 @@ class TestPlanReporter:
         with patch.object(reporter, '_write') as mock_write:
             reporter._print_attribute_changes(resource)
             
+            # Get the written text and strip ANSI codes
             written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
-            assert "~ name = old -> new" in written_text
+            clean_text = strip_ansi(written_text)
+            
+            # Now we can assert against the clean text
+            assert "  ~ name = old -> new" in clean_text
 
     def test_color_output(self, reporter, sample_report_data):
         """Test color formatting in output."""

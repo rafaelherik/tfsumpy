@@ -1,19 +1,17 @@
 import logging
 from pathlib import Path
-
-def __init__(self, db_path: str = None):
- 
 import sqlite3
-from pathlib import Path
 import json
-import logging
+from typing import List, Dict
 
+
+ 
 class DBManager:
-    """Global database manager for bolwerk."""
+    """Global database manager for bulwerk."""
     
     def __init__(self, db_path: str = None):
         if not db_path:
-            db_path = str(Path.home() / '.bolwerk' / 'bolwerk.db')
+            db_path = str(Path.home() / '.bulwerk' / 'bulwerk.db')
         
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self.db_path = db_path

@@ -34,7 +34,7 @@ dev-install: venv
 
 # Development commands
 test: dev-install
-	$(PYTHON) -m pytest bolwerk/tests/
+	$(PYTHON) -m pytest tests/
 
 
 
