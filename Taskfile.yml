@@ -1,0 +1,34 @@
+version: '3'
+
+tasks:
+  install:
+    desc: Install all dependencies (including dev)
+    cmds:
+      - python3 -m venv .venv
+      - . .venv/bin/activate && pip install --upgrade pip
+      - . .venv/bin/activate && pip install -e ".[dev]"
+      - . .venv/bin/activate && pip install build
+    sources:
+      - pyproject.toml
+      - requirements.txt
+    generates:
+      - .venv
+
+  test:
+    desc: Run all tests with pytest
+    cmds:
+      - . .venv/bin/activate && pytest
+    deps: [install]
+
+  lint:
+    desc: Run linting (pylint and mypy)
+    cmds:
+      - . .venv/bin/activate && pylint tfsumpy
+      - . .venv/bin/activate && mypy tfsumpy
+    deps: [install]
+
+  build:
+    desc: Build the package
+    cmds:
+      - . .venv/bin/activate && python -m build
+    deps: [install] 

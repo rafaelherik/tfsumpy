@@ -1,6 +1,7 @@
-from .plan_analyzer import LocalPlanAnalyzer
+from .plan.analyzer import PlanAnalyzer
+from .plan.reporter import PlanReporter
 from .resource import ResourceChange
+from .context import Context
+__version__ = '0.0.3'
 
-__version__ = '0.1.0'
-
-__all__ = ['LocalPlanAnalyzer', 'ResourceChange']
+__all__ = ['PlanAnalyzer', 'ResourceChange', 'Context', 'PlanReporter']
