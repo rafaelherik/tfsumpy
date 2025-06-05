@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tfsumpy"
-version = "0.0.3"
+version = "0.1.0"
 description = "A Python tool for Terraform state summary"
 authors = ["Rafael H de Carvalho <rafaelherik@gmail.com>"]
 readme = "README.md"
