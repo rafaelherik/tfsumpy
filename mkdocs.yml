@@ -26,20 +26,16 @@ theme:
 
 nav:
   - Home: index.md
-  - Installation: installation.md
   - Usage:
-    - Basic Usage: usage/basic_usage.md
-    - Advanced Usage: usage/advanced_usage.md
-    - Configuration: usage/configuration.md
+      - Advanced Usage: usage/advanced_usage.md
+      - Configuration: usage/configuration.md
   - Features:
-    - Plan Analysis: features/plan_analysis.md
-    - Risk Assessment: features/risk_assessment.md
-    - Policy Compliance: features/policy_compliance.md
+      - Plan Analysis: features/plan_analysis.md
   - API Reference:
-    - Analyzers: api/analyzers.md
-    - Reporters: api/reporters.md
-    - Models: api/models.md
-    - Extending tfsumpy: extending.md
+      - Analyzers: api/analyzers.md
+      - Reporters: api/reporters.md
+      - Models: api/models.md
+      - Extending tfsumpy: extending.md
   - Contributing: contributing.md
 
 markdown_extensions:
