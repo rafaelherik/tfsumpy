@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from ..reporters.base_reporter import BaseReporter
 from ..reporter import ReporterInterface
 import json as _json
@@ -47,6 +47,66 @@ class PlanReporter(BaseReporter, ReporterInterface):
         except Exception as e:
             self.logger.error(f"Error processing report: {str(e)}")
             raise
+
+    def _process_resources(self, resources: List[Dict], show_changes: bool = False, show_details: bool = False) -> List[Dict]:
+        """Process resources and their changes.
+        
+        Args:
+            resources: List of resources to process
+            show_changes: Whether to include attribute changes
+            show_details: Whether to include additional details
+            
+        Returns:
+            List[Dict]: Processed resources with changes and details
+        """
+        processed_resources = []
+        for resource in resources:
+            resource_data = {
+                'resource_type': resource['resource_type'],
+                'identifier': resource['identifier'],
+                'action': resource['action'],
+                'provider': resource.get('provider', 'unknown'),
+                'module': resource.get('module', 'root')
+            }
+
+            # Process changes if requested
+            if show_changes:
+                before = resource.get('before', {}) or {}
+                after = resource.get('after', {}) or {}
+                changes = []
+                
+                # Get all changed attributes
+                all_attrs = set(before.keys()) | set(after.keys())
+                skip_attrs = {'id', 'tags_all'}  # Skip internal attributes
+                
+                for attr in sorted(all_attrs - skip_attrs):
+                    before_val = before.get(attr)
+                    after_val = after.get(attr)
+                    
+                    if before_val != after_val:
+                        changes.append({
+                            'attribute': attr,
+                            'before': before_val,
+                            'after': after_val
+                        })
+                
+                if changes:
+                    resource_data['changes'] = changes
+
+            # Add additional details if requested
+            if show_details:
+                resource_data['details'] = {
+                    'dependencies': resource.get('dependencies', []),
+                    'tags': resource.get('tags', {}),
+                    'raw': {
+                        'before': resource.get('before', {}),
+                        'after': resource.get('after', {})
+                    }
+                }
+
+            processed_resources.append(resource_data)
+        
+        return processed_resources
 
     def print_report(self, data: Any, **kwargs) -> None:
         """Print the plan analysis report.
@@ -152,13 +212,20 @@ class PlanReporter(BaseReporter, ReporterInterface):
         show_details = kwargs.get('show_details', False)
         show_changes = kwargs.get('show_changes', False)
 
+        # Process resources
+        processed_resources = self._process_resources(
+            report.get('resources', []),
+            show_changes=show_changes,
+            show_details=show_details
+        )
+
         # Prepare template data
         template_data = {
             'total_resources': report['total_changes'],
             'resources_to_add': report['change_breakdown']['create'],
             'resources_to_change': report['change_breakdown']['update'],
             'resources_to_destroy': report['change_breakdown']['delete'],
-            'resources': report.get('resources', []),
+            'resources': processed_resources,
             'show_changes': show_changes,
             'show_details': show_details,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -183,6 +250,13 @@ class PlanReporter(BaseReporter, ReporterInterface):
         show_details = kwargs.get('show_details', False)
         show_changes = kwargs.get('show_changes', False)
 
+        # Process resources
+        processed_resources = self._process_resources(
+            report.get('resources', []),
+            show_changes=show_changes,
+            show_details=show_details
+        )
+
         # Prepare JSON output structure
         json_output = {
             'metadata': {
@@ -196,55 +270,8 @@ class PlanReporter(BaseReporter, ReporterInterface):
                 'resources_to_change': report['change_breakdown']['update'],
                 'resources_to_destroy': report['change_breakdown']['delete']
             },
-            'resources': []
+            'resources': processed_resources
         }
-
-        # Process resources
-        for resource in report.get('resources', []):
-            resource_data = {
-                'type': resource['resource_type'],
-                'name': resource['identifier'],
-                'action': resource['action'],
-                'provider': resource.get('provider', 'unknown'),
-                'module': resource.get('module', 'root')
-            }
-
-            # Add changes if requested
-            if show_changes:
-                before = resource.get('before', {}) or {}
-                after = resource.get('after', {}) or {}
-                changes = []
-                
-                # Get all changed attributes
-                all_attrs = set(before.keys()) | set(after.keys())
-                skip_attrs = {'id', 'tags_all'}  # Skip internal attributes
-                
-                for attr in sorted(all_attrs - skip_attrs):
-                    before_val = before.get(attr)
-                    after_val = after.get(attr)
-                    
-                    if before_val != after_val:
-                        changes.append({
-                            'attribute': attr,
-                            'before': before_val,
-                            'after': after_val
-                        })
-                
-                if changes:
-                    resource_data['changes'] = changes
-
-            # Add additional details if requested
-            if show_details:
-                resource_data['details'] = {
-                    'dependencies': resource.get('dependencies', []),
-                    'tags': resource.get('tags', {}),
-                    'raw': {
-                        'before': resource.get('before', {}),
-                        'after': resource.get('after', {})
-                    }
-                }
-
-            json_output['resources'].append(resource_data)
 
         # Add analysis section if available
         if 'analysis' in report:

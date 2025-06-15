@@ -7,9 +7,8 @@
 - **Resources to Destroy**: {{ resources_to_destroy }}
 
 ## Resource Changes
-{% if show_changes %}
 {% for resource in resources %}
-### {{ resource.type }}.{{ resource.name }}
+### {{ resource.resource_type }}.{{ resource.identifier }}
 {% if resource.changes %}
 #### Changes:
 {% for change in resource.changes %}
@@ -23,9 +22,6 @@
 - **Dependencies**: {{ resource.dependencies|join(', ') }}
 {% endif %}
 {% endfor %}
-{% else %}
-*Detailed changes are hidden. Use --hide-changes=false to show them.*
-{% endif %}
 
 ## Analysis
 {% if analysis %}
