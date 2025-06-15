@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import Mock, patch
 from tfsumpy.plan.reporter import PlanReporter
 import re
+import json
+from datetime import datetime
 
 @pytest.fixture
 def reporter():
@@ -107,6 +109,94 @@ class TestPlanReporter:
                       for call in mock_write.call_args_list)
             assert any("t2.micro -> t2.small" in call[0][0] 
                       for call in mock_write.call_args_list)
+
+    def test_print_report_markdown(self, reporter, sample_report_data):
+        """Test markdown report generation."""
+        with patch.object(reporter, '_write') as mock_write:
+            reporter.print_report_markdown(sample_report_data)
+            written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
+            
+            # Verify markdown structure
+            assert '# Terraform Plan Analysis Report' in written_text
+            assert '## Summary' in written_text
+            assert '## Resource Changes' in written_text
+            
+            # Verify summary content
+            assert '**Total Resources**: 3' in written_text
+            assert '**Resources to Add**: 1' in written_text
+            assert '**Resources to Change**: 1' in written_text
+            assert '**Resources to Destroy**: 1' in written_text
+
+    def test_print_report_markdown_with_details(self, reporter, sample_report_data):
+        """Test markdown report with detailed information."""
+        with patch.object(reporter, '_write') as mock_write:
+            reporter.print_report_markdown(sample_report_data, show_details=True, show_changes=True)
+            written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
+            
+            # Verify detailed information
+            assert '## Resource Changes' in written_text
+            assert '### Details:' in written_text
+            assert '**Provider**:' in written_text
+            assert '**Module**:' in written_text
+            assert '**Dependencies**:' in written_text
+
+    def test_print_report_json(self, reporter, sample_report_data):
+        """Test JSON report generation."""
+        with patch.object(reporter, '_write') as mock_write:
+            reporter.print_report_json(sample_report_data)
+            written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
+            
+            # Parse JSON output
+            json_data = json.loads(written_text)
+            
+            # Verify JSON structure
+            assert 'metadata' in json_data
+            assert 'summary' in json_data
+            assert 'resources' in json_data
+            
+            # Verify metadata
+            assert 'timestamp' in json_data['metadata']
+            assert 'version' in json_data['metadata']
+            
+            # Verify summary
+            assert json_data['summary']['total_resources'] == 3
+            assert json_data['summary']['resources_to_add'] == 1
+            assert json_data['summary']['resources_to_change'] == 1
+            assert json_data['summary']['resources_to_destroy'] == 1
+            
+            # Verify resources
+            assert len(json_data['resources']) == 3
+            assert any(r['action'] == 'create' for r in json_data['resources'])
+            assert any(r['action'] == 'update' for r in json_data['resources'])
+            assert any(r['action'] == 'delete' for r in json_data['resources'])
+
+    def test_print_report_json_with_details(self, reporter, sample_report_data):
+        """Test JSON report with detailed information."""
+        with patch.object(reporter, '_write') as mock_write:
+            reporter.print_report_json(sample_report_data, show_details=True, show_changes=True)
+            written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
+            json_data = json.loads(written_text)
+            
+            # Verify detailed information in JSON
+            for resource in json_data['resources']:
+                assert 'action' in resource
+                assert 'module' in resource
+                assert 'name' in resource
+                assert 'provider' in resource
+                
+                if resource['action'] == 'update':
+                    assert 'changes' in resource
+                    assert 'details' in resource
+                    assert 'raw' in resource['details']
+                    assert 'before' in resource['details']['raw']
+                    assert 'after' in resource['details']['raw']
+                    
+                    # Verify changes array
+                    assert len(resource['changes']) > 0
+                    for change in resource['changes']:
+                        assert 'attribute' in change
+                        assert 'before' in change
+                        assert 'after' in change
 
     def test_invalid_report_format(self, reporter):
         """Test handling of invalid report format."""

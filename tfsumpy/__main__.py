@@ -91,11 +91,9 @@ def main():
                                               show_changes=not args.hide_changes,
                                               show_details=args.detailed or args.details)
         elif output_format == 'json':
-            # TODO: Implement JSON output format
-            logger.warning("JSON output format not yet implemented")
-            context.run_reports("plan", plan_results[0].data,
-                              show_changes=not args.hide_changes,
-                              show_details=args.detailed or args.details)
+            plan_reporter.print_report_json(plan_results[0].data,
+                                          show_changes=not args.hide_changes,
+                                          show_details=args.detailed or args.details)
         else:  # default output
             context.run_reports("plan", plan_results[0].data,
                               show_changes=not args.hide_changes,

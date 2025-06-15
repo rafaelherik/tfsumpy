@@ -7,7 +7,8 @@ Welcome to **tfsumpy** — the modern, Python-based CLI tool for summarizing and
 ## 🚀 Why tfsumpy?
 
 - **Instant Plan Summaries:** See what will be created, updated, or destroyed at a glance.
-- **Human-Friendly Output:** Color-coded, Markdown, and JSON output for easy review and sharing.
+- **Multiple Output Formats:** Console, Markdown, and JSON output for any use case.
+- **Template-Based Output:** Consistent, customizable output formats.
 - **Sensitive Data Protection:** Automatically redact secrets and sensitive values.
 - **Customizable:** Configure redaction and output to fit your workflow.
 - **No Cloud Required:** Runs locally, works with any Terraform JSON plan.
@@ -44,21 +45,35 @@ Shows a concise summary of all resource changes.
 
 ### Detailed Attribute Changes
 ```bash
-tfsumpy plan.json --changes
+tfsumpy plan.json --hide-changes=false
 ```
 See exactly which attributes will change for each resource.
 
 ### Full Resource Details
 ```bash
-tfsumpy plan.json --details
+tfsumpy plan.json --detailed
 ```
 Get a deep dive into every resource and its planned state.
 
-### Markdown Output (for PRs, docs, or sharing)
+### Output Formats
+
+#### Console Output (Default)
 ```bash
-tfsumpy plan.json --markdown > plan_summary.md
+tfsumpy plan.json
+```
+Color-coded, human-readable output in your terminal.
+
+#### Markdown Output
+```bash
+tfsumpy plan.json --output markdown > plan_summary.md
 ```
 Generates a beautiful Markdown summary, perfect for code reviews or documentation.
+
+#### JSON Output
+```bash
+tfsumpy plan.json --output json > plan_summary.json
+```
+Structured JSON output for integration with other tools or automation.
 
 ### Custom Redaction & Config
 ```bash
@@ -91,7 +106,7 @@ Create a `config.json` to redact custom sensitive patterns:
 
 - [Plan Analysis](features/plan_analysis.md): How tfsumpy analyzes your plans
 - [Configuration](usage/configuration.md): Customizing output and redaction
-- [Advanced Usage](usage/advanced_usage.md): Markdown, debug, and more
+- [Advanced Usage](usage/advanced_usage.md): Output formats and more
 - [Analyzers API](api/analyzers.md): Extend or integrate tfsumpy
 - [Reporters API](api/reporters.md): Custom output formats
 - [Models API](api/models.md): Data structures
