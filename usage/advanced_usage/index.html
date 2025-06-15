@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Advanced Usage - tfsumpy Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Advanced Usage";
+        var mkdocs_page_input_path = "usage/advanced_usage.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> tfsumpy Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Advanced Usage</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#output-formats">Output Formats</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#console-output-default">Console Output (Default)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#markdown-output">Markdown Output</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#json-output">JSON Output</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#using-tfsumpy-in-cicd">Using tfsumpy in CI/CD</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#for-code-review">For Code Review</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#for-compliance-snapshots">For Compliance Snapshots</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#debug-mode">Debug Mode</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#command-line-options">Command Line Options</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#output-control">Output Control</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#deprecated-options">Deprecated Options</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#configuration">Configuration</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#markdown-output-beta">Markdown Output (Beta)</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Features</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../features/plan_analysis/">Plan Analysis</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/analyzers/">Analyzers</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/reporters/">Reporters</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/models/">Models</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../extending/">Extending tfsumpy</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../contributing/">Contributing</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">tfsumpy Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Usage</li>
+      <li class="breadcrumb-item active">Advanced Usage</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/rafaelherik/tfsumpy/edit/master/docs/usage/advanced_usage.md">Edit on rafaelherik/tfsumpy</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="advanced-usage">Advanced Usage</h1>
+<h2 id="output-formats">Output Formats</h2>
+<p>tfsumpy supports three output formats, each designed for different use cases:</p>
+<h3 id="console-output-default">Console Output (Default)</h3>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>tfsumpy<span class="w"> </span>plan.json
+</code></pre></div>
+Color-coded, human-readable output in your terminal. Perfect for quick reviews and local development.</p>
+<h3 id="markdown-output">Markdown Output</h3>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--output<span class="w"> </span>markdown<span class="w"> </span>&gt;<span class="w"> </span>plan_summary.md
+</code></pre></div>
+Template-based Markdown output with:
+- Summary statistics
+- Resource changes
+- Detailed attribute changes (if enabled)
+- Timestamp and metadata</p>
+<h3 id="json-output">JSON Output</h3>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--output<span class="w"> </span>json<span class="w"> </span>&gt;<span class="w"> </span>plan_summary.json
+</code></pre></div>
+Structured JSON output with:
+- Metadata (timestamp, version)
+- Summary statistics
+- Resource changes
+- Detailed information (if enabled)
+- Analysis results (if available)</p>
+<h2 id="using-tfsumpy-in-cicd">Using tfsumpy in CI/CD</h2>
+<p>Integrate tfsumpy into your CI pipeline to automatically summarize Terraform changes in pull requests or deployments:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Example GitHub Actions step</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Summarize Terraform Plan</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="no">terraform plan -out=tfplan</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="no">terraform show -json tfplan &gt; plan.json</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="no">tfsumpy plan.json --output markdown &gt; plan_summary.md</span>
+</code></pre></div>
+<p>Attach <code>plan_summary.md</code> to your PR or publish as a build artifact for easy review.</p>
+<h2 id="for-code-review">For Code Review</h2>
+<p>Generate a Markdown summary and paste it directly into your pull request description:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--output<span class="w"> </span>markdown<span class="w"> </span>&gt;<span class="w"> </span>plan_summary.md
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>cat<span class="w"> </span>plan_summary.md
+</code></pre></div>
+<h2 id="for-compliance-snapshots">For Compliance Snapshots</h2>
+<p>Keep a record of planned infrastructure changes for audit or compliance:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Markdown format</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--output<span class="w"> </span>markdown<span class="w"> </span>&gt;<span class="w"> </span>compliance/plan_<span class="k">$(</span>date<span class="w"> </span>+%Y%m%d<span class="k">)</span>.md
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># JSON format</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--output<span class="w"> </span>json<span class="w"> </span>&gt;<span class="w"> </span>compliance/plan_<span class="k">$(</span>date<span class="w"> </span>+%Y%m%d<span class="k">)</span>.json
+</code></pre></div>
+<h2 id="debug-mode">Debug Mode</h2>
+<p>For troubleshooting or detailed analysis:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--debug
+</code></pre></div>
+<p>This enables:
+- Verbose logging
+- Detailed error messages
+- Analysis process information</p>
+<h2 id="command-line-options">Command Line Options</h2>
+<h3 id="output-control">Output Control</h3>
+<ul>
+<li><code>--output</code> or <code>-o</code>: Choose output format (<code>default</code>, <code>markdown</code>, <code>json</code>)</li>
+<li><code>--detailed</code>: Show detailed resource information</li>
+<li><code>--hide-changes</code>: Hide detailed attribute changes</li>
+</ul>
+<h3 id="deprecated-options">Deprecated Options</h3>
+<p>The following options are deprecated and will be removed in a future version:
+- <code>--changes</code> → Use <code>--hide-changes=false</code> instead
+- <code>--details</code> → Use <code>--detailed</code> instead
+- <code>--markdown</code> → Use <code>--output markdown</code> instead</p>
+<h3 id="configuration">Configuration</h3>
+<ul>
+<li><code>--config</code>: Path to configuration file</li>
+<li><code>--plugin-dir</code>: Directory to load plugins from</li>
+<li><code>--debug</code>: Enable debug logging</li>
+</ul>
+<h2 id="markdown-output-beta">Markdown Output (Beta)</h2>
+<p>You can generate a Markdown summary of your Terraform plan with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--markdown<span class="w"> </span>&gt;<span class="w"> </span>plan_summary.md
+</code></pre></div>
+<p>This will create a Markdown file with:
+- A summary section
+- Sections for created, updated, and destroyed resources
+- JSON code blocks for each resource change</p>
+<p>For updates, both before and after states are shown. For creates and deletes, only the relevant state is shown.</p>
+<blockquote>
+<p><strong>Note:</strong> Markdown output is a beta feature. Please report any issues or suggestions! </p>
+</blockquote>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../.." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../configuration/" class="btn btn-neutral float-right" title="Configuration">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/rafaelherik/tfsumpy" class="fa fa-code-fork" style="color: #fcfcfc"> rafaelherik/tfsumpy</a>
+        </span>
+    
+    
+      <span><a href="../.." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../configuration/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
