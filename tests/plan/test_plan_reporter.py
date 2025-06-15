@@ -181,7 +181,8 @@ class TestPlanReporter:
             for resource in json_data['resources']:
                 assert 'action' in resource
                 assert 'module' in resource
-                assert 'name' in resource
+                assert 'resource_type' in resource
+                assert 'identifier' in resource
                 assert 'provider' in resource
                 
                 if resource['action'] == 'update':
