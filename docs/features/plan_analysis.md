@@ -1,123 +1,76 @@
 # Plan Analysis
 
 ## Overview
-
-Plan analysis is the core feature of tfsumpy, providing detailed insights into Terraform infrastructure changes.
+The plan analysis feature provides detailed insights into Terraform plan changes, including resource modifications, attribute changes, and potential risks. It supports multiple output formats and AI-powered summarization.
 
 ## Features
+- Change detection and tracking
+- Attribute change analysis
+- Multiple output formats (console, markdown, JSON)
+- AI-powered change summarization
+- Risk assessment
+- Customizable analysis rules
 
-### Change Detection
+## Output Formats
 
-tfsumpy identifies three types of changes:
+### Console Output
+The default output format provides a clear, colorized view of plan changes in the terminal.
 
-- **Create**: New resources being added
-- **Update**: Modifications to existing resources
-- **Delete**: Resources being removed
+### Markdown Output
+Generate detailed markdown reports suitable for documentation or pull requests.
 
-### Attribute Tracking
+### JSON Output
+Get structured JSON output for integration with other tools or custom processing.
 
-For each resource change, tfsumpy tracks:
+### AI Summarization
+Get AI-powered analysis of your Terraform changes using various providers:
 
-- Resource type and name
-- Changed attributes
-- Old and new values
-- Dependencies
-
-### Output Formats
-
-tfsumpy supports three output formats:
-
-#### Console Output (Default)
 ```bash
-Terraform Plan Analysis
-======================
-Total Changes: 3
-Create: 1
-Update: 1
-Delete: 1
+# Using OpenAI
+tfsumpy plan.json --output markdown --ai openai YOUR_API_KEY
+
+# Using Google Gemini
+tfsumpy plan.json --output markdown --ai gemini YOUR_API_KEY
+
+# Using Anthropic Claude
+tfsumpy plan.json --output markdown --ai anthropic YOUR_API_KEY
 ```
 
-#### Markdown Output
-```markdown
-# Terraform Plan Analysis
-Generated: 2024-03-21 10:00:00
+#### AI Configuration Options
+- `--ai PROVIDER API_KEY`: Enable AI summarization with provider and API key
+- `--ai-model MODEL`: Specify the model to use
+- `--ai-max-tokens N`: Maximum tokens for the AI response
+- `--ai-temperature N`: Control response creativity (0.0 to 1.0)
+- `--ai-system-prompt PROMPT`: Custom system prompt for the AI
 
-## Summary
-- Total Changes: 3
-- Create: 1
-- Update: 1
-- Delete: 1
-
-## Resource Changes
-### Create
-- aws_s3_bucket.data_bucket
-  - bucket: "new-bucket"
-  - versioning_enabled: true
-
-### Update
-- aws_instance.web_server
-  - instance_type: "t2.micro" → "t2.small"
-  - tags.environment: "dev" → "staging"
-```
-
-#### JSON Output
-```json
-{
-  "metadata": {
-    "timestamp": "2024-03-21T10:00:00Z",
-    "version": "1.0.0"
-  },
-  "summary": {
-    "total_changes": 3,
-    "create": 1,
-    "update": 1,
-    "delete": 1
-  },
-  "changes": {
-    "create": [
-      {
-        "type": "aws_s3_bucket",
-        "name": "data_bucket",
-        "attributes": {
-          "bucket": "new-bucket",
-          "versioning_enabled": true
-        }
-      }
-    ]
-  }
-}
-```
+#### Example AI Summary
+The AI summary provides:
+- Overall impact assessment
+- Key resource changes
+- Potential risks
+- Recommendations
 
 ## Usage Examples
 
-### Basic Summary
+### Basic Analysis
 ```bash
 tfsumpy plan.json
 ```
 
-### Detailed Changes
+### Detailed Analysis with AI
 ```bash
-tfsumpy plan.json --hide-changes=false
+tfsumpy plan.json --output markdown --detailed --ai openai YOUR_API_KEY --ai-model gpt-4
 ```
 
-### Resource Details
+### JSON Output with AI
 ```bash
-tfsumpy plan.json --detailed
+tfsumpy plan.json --output json --ai anthropic YOUR_API_KEY --ai-model claude-3-opus-20240229
 ```
 
-### Output Formats
-```bash
-# Console output (default)
-tfsumpy plan.json
-
-# Markdown output
-tfsumpy plan.json --output markdown > plan_summary.md
-
-# JSON output
-tfsumpy plan.json --output json > plan_summary.json
-```
-
-> **Note:** The following options are deprecated and will be removed in a future version:
-> - `--changes` → Use `--hide-changes=false` instead
-> - `--details` → Use `--detailed` instead
-> - `--markdown` → Use `--output markdown` instead 
+## Notes
+- AI summarization requires an API key for the chosen provider
+- The AI feature is optional and can be installed with: `pip install tfsumpy[ai]`
+- Default models are provider-specific:
+  - OpenAI: gpt-3.5-turbo
+  - Gemini: gemini-pro
+  - Anthropic: claude-3-sonnet-20240229 

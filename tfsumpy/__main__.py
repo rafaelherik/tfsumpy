@@ -1,15 +1,90 @@
 import logging
 import argparse
 import warnings
+import os
+import sys
 from pathlib import Path
+from typing import Optional, Dict, Any
 from .plan.analyzer import PlanAnalyzer
 from .plan.reporter import PlanReporter
-from .context import Context
+from .context import Context, ConfigurationError
 from tfsumpy.plugins import load_plugins
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Default models for each provider
+DEFAULT_MODELS = {
+    'openai': 'gpt-3.5-turbo',
+    'gemini': 'gemini-pro',
+    'anthropic': 'claude-3-sonnet-20240229'
+}
+
+class TFSumpyError(Exception):
+    """Base exception for TFSumpy errors"""
+    pass
+
+class ConfigurationError(TFSumpyError):
+    """Raised when there is an error in configuration"""
+    pass
+
+class ValidationError(TFSumpyError):
+    """Raised when input validation fails"""
+    pass
+
+def validate_plan_file(plan_path: str) -> None:
+    """Validate that the plan file exists and is readable
+    
+    Args:
+        plan_path: Path to the Terraform plan file
+        
+    Raises:
+        ValidationError: If the plan file is invalid
+    """
+    plan_path = Path(plan_path)
+    if not plan_path.exists():
+        raise ValidationError(f"Plan file not found: {plan_path}")
+    if not plan_path.is_file():
+        raise ValidationError(f"Plan path is not a file: {plan_path}")
+    if not os.access(plan_path, os.R_OK):
+        raise ValidationError(f"Plan file is not readable: {plan_path}")
+
+def get_ai_config(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
+    """Get AI configuration from arguments and environment variables
+    
+    Args:
+        args: Command line arguments
+        
+    Returns:
+        Optional[Dict[str, Any]]: AI configuration if enabled
+        
+    Raises:
+        ValidationError: If AI configuration is invalid
+    """
+    if not args.ai:
+        return None
+        
+    if len(args.ai) < 2:
+        raise ValidationError("--ai requires both provider and API key")
+    
+    provider = args.ai[0].lower()
+    if provider not in DEFAULT_MODELS:
+        raise ValidationError(f"Unsupported AI provider: {provider}")
+    
+    # Try to get API key from environment variable first
+    api_key = os.getenv(f"TFSUMPY_{provider.upper()}_API_KEY", args.ai[1])
+    if not api_key:
+        raise ValidationError(f"API key not provided for {provider}")
+    
+    return {
+        'provider': provider,
+        'model': args.ai_model or DEFAULT_MODELS[provider],
+        'api_key': api_key,
+        'max_tokens': args.ai_max_tokens,
+        'temperature': args.ai_temperature,
+        'system_prompt': args.ai_system_prompt
+    }
 
 def main():
     parser = argparse.ArgumentParser(description='Analyze Terraform plan files')
@@ -32,6 +107,25 @@ def main():
                             action='store_true',
                             help='Hide detailed attribute changes')
     
+    # AI summarization options
+    ai_group = parser.add_argument_group('AI Summarization Options')
+    ai_group.add_argument('--ai',
+                         nargs='+',
+                         metavar=('PROVIDER', 'API_KEY'),
+                         help='Enable AI summarization with provider and API key (e.g., --ai openai YOUR_KEY)')
+    ai_group.add_argument('--ai-model',
+                         help='AI model to use (default varies by provider)')
+    ai_group.add_argument('--ai-max-tokens',
+                         type=int,
+                         default=1000,
+                         help='Maximum tokens for AI response (default: 1000)')
+    ai_group.add_argument('--ai-temperature',
+                         type=float,
+                         default=0.7,
+                         help='Temperature for AI response (default: 0.7)')
+    ai_group.add_argument('--ai-system-prompt',
+                         help='Custom system prompt for AI')
+    
     # Deprecated arguments (kept for backward compatibility)
     deprecated_group = parser.add_argument_group('Deprecated Options')
     deprecated_group.add_argument('--changes', 
@@ -45,7 +139,9 @@ def main():
                                 help='[DEPRECATED] Output the summary in markdown format. Use --output markdown instead.')
     
     # Plugin directory
-    parser.add_argument('--plugin-dir', default='plugins', help='Directory to load plugins from')
+    parser.add_argument('--plugin-dir', 
+                       default=os.getenv('TFSUMPY_PLUGIN_DIR', 'plugins'),
+                       help='Directory to load plugins from (default: plugins or TFSUMPY_PLUGIN_DIR env var)')
     
     args = parser.parse_args()
     
@@ -66,8 +162,12 @@ def main():
             logging.getLogger().setLevel(logging.DEBUG)
             logger.debug("Debug logging enabled")
         
+        # Validate plan file
+        validate_plan_file(args.plan_path)
+        
         # Initialize Context and register analyzers
         context = Context(config_path=args.config, debug=args.debug)
+        
         # Load plugins
         load_plugins(context, plugin_dir=args.plugin_dir)
         
@@ -85,16 +185,27 @@ def main():
         if args.markdown:
             output_format = 'markdown'
         
+        # Get AI configuration
+        ai_config = get_ai_config(args)
+        
         # Handle different output formats
         if output_format == 'markdown':
             plan_reporter.print_report_markdown(plan_results[0].data,
                                               show_changes=not args.hide_changes,
-                                              show_details=args.detailed or args.details)
+                                              show_details=args.detailed or args.details,
+                                              ai_config=ai_config)
         elif output_format == 'json':
+            if ai_config:
+                warnings.warn("AI analysis is only supported with markdown output format. Use --output markdown to see the AI analysis.", 
+                            UserWarning, stacklevel=2)
             plan_reporter.print_report_json(plan_results[0].data,
                                           show_changes=not args.hide_changes,
-                                          show_details=args.detailed or args.details)
+                                          show_details=args.detailed or args.details,
+                                          ai_config=None)  # Force ai_config to None for non-markdown formats
         else:  # default output
+            if ai_config:
+                warnings.warn("AI analysis is only supported with markdown output format. Use --output markdown to see the AI analysis.", 
+                            UserWarning, stacklevel=2)
             context.run_reports("plan", plan_results[0].data,
                               show_changes=not args.hide_changes,
                               show_details=args.detailed or args.details)
@@ -102,17 +213,20 @@ def main():
         # Store plan data for other analyzers
         context.set_plan_data(plan_results[0].data)
         
-    except FileNotFoundError as e:
-        logger.error(f"File not found: {e}")
-        exit(1)
-    except ValueError as e:
-        logger.error(f"Invalid input: {e}")
-        exit(1)
+    except ValidationError as e:
+        logger.error(f"Validation error: {e}")
+        sys.exit(1)
+    except ConfigurationError as e:
+        logger.error(f"Configuration error: {e}")
+        sys.exit(1)
+    except TFSumpyError as e:
+        logger.error(f"TFSumpy error: {e}")
+        sys.exit(1)
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}")
+        logger.error(f"An unexpected error occurred: {str(e)}")
         if args.debug:
             logger.exception("Detailed error information:")
-        exit(1)
+        sys.exit(1)
 
 if __name__ == '__main__':
     main() 

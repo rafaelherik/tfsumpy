@@ -1,7 +1,8 @@
-from .plan.analyzer import PlanAnalyzer
-from .plan.reporter import PlanReporter
-from .resource import ResourceChange
-from .context import Context
-__version__ = '0.0.3'
+"""tfsumpy - Terraform Plan Summary Tool"""
 
-__all__ = ['PlanAnalyzer', 'ResourceChange', 'Context', 'PlanReporter']
+from .models import ResourceChange
+from .plan.reporter import PlanReporter
+from .context import Context
+
+__version__ = "0.2.0"
+__all__ = ["ResourceChange", "PlanReporter", "Context"]

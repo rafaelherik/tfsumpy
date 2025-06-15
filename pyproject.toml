@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "tfsumpy"
 version = "0.2.0"
-description = "A Python tool for Terraform state summary"
+description = "A Python tool for analyzing Terraform plan files"
 authors = ["Rafael H de Carvalho <rafaelherik@gmail.com>"]
 readme = "README.md"
 repository = "https://github.com/rafaelherik/tfsumpy"
@@ -13,6 +13,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -25,20 +26,27 @@ classifiers = [
 "Source Code" = "https://github.com/rafaelherik/tfsumpy"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-pytest = ">=7.0.0"
-pyyaml = ">=5.1"
-jsonschema = ">=3.2.0"
-colorama = ">=0.4.6"
-jinja2 = "^3.1.6"
+python = "^3.9"
+click = "^8.1.7"
+rich = "^13.7.0"
+jinja2 = "^3.1.2"
+openai = "^1.12.0"
+google-generativeai = "^0.3.2"
+anthropic = "^0.18.1"
 
 [tool.poetry.group.dev.dependencies]
-pytest-cov = ">=4.1.0"
-pytest-mock = ">=3.6.1"
-coverage = ">=7.2.0"
+pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+coverage = "^7.4.1"
+black = "^24.1.1"
+isort = "^5.13.2"
+mypy = "^1.8.0"
+ruff = "^0.2.1"
 
 [tool.poetry.extras]
 dev = [
+    "pytest",
     "pytest-cov",
     "pytest-mock",
     "coverage"
@@ -49,4 +57,27 @@ tfsumpy = "tfsumpy.__main__:main"
 
 [build-system]
 requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api" 
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = ["E", "F", "B", "I"]
+ignore = [] 

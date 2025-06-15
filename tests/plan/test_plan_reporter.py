@@ -265,4 +265,33 @@ class TestPlanReporter:
         self.print_patcher = patch('builtins.print')
         self.mock_print = self.print_patcher.start()
         yield
-        self.print_patcher.stop() 
+        self.print_patcher.stop()
+
+    def test_print_report_markdown_with_ai_and_changes(self, reporter, sample_report_data):
+        """Test markdown report with AI analysis and resource changes."""
+        ai_config = {'provider': 'openai', 'model': 'gpt-4'}
+        with patch.object(reporter, 'get_ai_summary') as mock_ai_summary, \
+             patch.object(reporter, '_write') as mock_write:
+            mock_ai_summary.return_value = "Test AI summary"
+            reporter.print_report_markdown(sample_report_data, show_changes=True, show_details=True, ai_config=ai_config)
+            written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
+            
+            # Verify both AI summary and resource changes are present
+            assert '## AI Analysis' in written_text
+            assert '## Resource Changes' in written_text
+            assert 'Test AI summary' in written_text
+            assert '### Details:' in written_text
+
+    def test_print_report_markdown_with_ai_no_changes(self, reporter, sample_report_data):
+        """Test markdown report with AI analysis but no resource changes."""
+        ai_config = {'provider': 'openai', 'model': 'gpt-4'}
+        with patch.object(reporter, 'get_ai_summary') as mock_ai_summary, \
+             patch.object(reporter, '_write') as mock_write:
+            mock_ai_summary.return_value = "Test AI summary"
+            reporter.print_report_markdown(sample_report_data, show_changes=False, ai_config=ai_config)
+            written_text = ''.join(call[0][0] for call in mock_write.call_args_list)
+            
+            # Verify AI summary is present but resource changes are not
+            assert '## AI Analysis' in written_text
+            assert '## Resource Changes' not in written_text
+            assert 'Test AI summary' in written_text 

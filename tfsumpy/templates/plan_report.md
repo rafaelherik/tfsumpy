@@ -1,33 +1,41 @@
 # Terraform Plan Analysis Report
 
-## Summary
-- **Total Resources**: {{ total_resources }}
-- **Resources to Add**: {{ resources_to_add }}
-- **Resources to Change**: {{ resources_to_change }}
-- **Resources to Destroy**: {{ resources_to_destroy }}
+Generated on: {{ timestamp }}
 
-## Resource Changes
-{% for resource in resources %}
-### {{ resource.resource_type }}.{{ resource.identifier }}
-{% if resource.changes %}
-#### Changes:
-{% for change in resource.changes %}
-- **{{ change.attribute }}**: {{ change.before }} → {{ change.after }}
-{% endfor %}
+## Summary
+- **Total Resources**: {{ summary.total_resources }}
+- **Resources to Add**: {{ summary.resources_to_add }}
+- **Resources to Change**: {{ summary.resources_to_change }}
+- **Resources to Destroy**: {{ summary.resources_to_destroy }}
+
+{% if ai_summary %}
+## AI Analysis
+{{ ai_summary }}
 {% endif %}
-{% if show_details %}
-#### Details:
+
+{% if show_changes %}
+## Resource Changes
+
+{% for resource in resources %}
+### {{ resource.resource_type }}: {{ resource.identifier }}
+- Action: {{ resource.action }}
 - **Provider**: {{ resource.provider }}
 - **Module**: {{ resource.module }}
-- **Dependencies**: {{ resource.dependencies|join(', ') }}
-{% endif %}
-{% endfor %}
 
-## Analysis
-{% if analysis %}
-{% for item in analysis %}
-### {{ item.title }}
-{{ item.description }}
+{% if resource.changes %}
+- Changes:
+{% for change in resource.changes %}
+  - {{ change.attribute }}: {{ change.before }} → {{ change.after }}
+{% endfor %}
+{% endif %}
+
+{% if resource.details %}
+### Details:
+- **Dependencies**: {{ resource.details.dependencies }}
+- **Tags**: {{ resource.details.tags }}
+- **Raw**: {{ resource.details.raw }}
+{% endif %}
+
 {% endfor %}
 {% endif %}
 

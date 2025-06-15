@@ -1,135 +1,139 @@
 # Extending tfsumpy
 
-## Overview
+This guide explains how to extend tfsumpy with custom analyzers and reporters.
 
-tfsumpy is designed to be extensible. You can add your own analyzers (to interpret Terraform plans in new ways) and reporters (to output results in custom formats or destinations). This page shows how to build and register your own extensions.
+## Plugin System
 
----
+tfsumpy uses a plugin system that allows you to add custom analyzers and reporters. Plugins are Python files placed in a `plugins/` directory (or a custom directory specified with `--plugin-dir`).
 
-## Custom Analyzers
+## Creating Custom Analyzers
 
-A custom analyzer lets you add new types of analysis to your Terraform plans. For example, you might want to:
-- Estimate costs
-- Enforce custom compliance rules
-- Detect drift or other organization-specific patterns
-
-### Example: Cost Estimation Analyzer
+Analyzers process Terraform plan data and produce analysis results. Here's how to create a custom analyzer:
 
 ```python
-from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult
+from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult, AnalyzerCategory
+
+class MyAnalyzer(AnalyzerInterface):
+    @property
+    def category(self) -> AnalyzerCategory:
+        return AnalyzerCategory.PLAN  # or your custom category
+    
+    def analyze(self, context, **kwargs) -> AnalyzerResult:
+        # Your analysis logic here
+        return AnalyzerResult(
+            category=self.category,
+            data={"result": "analysis"}
+        )
+
+def register(context):
+    context.register_analyzer(MyAnalyzer())
+```
+
+### Example: Cost Analyzer
+
+```python
+from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult, AnalyzerCategory
 
 class CostAnalyzer(AnalyzerInterface):
     @property
-    def category(self) -> str:
-        return "cost"
-
+    def category(self) -> AnalyzerCategory:
+        return AnalyzerCategory.COST
+    
     def analyze(self, context, **kwargs) -> AnalyzerResult:
-        # Your custom cost analysis logic here
-        cost_summary = {"total_cost": 123.45}
-        return AnalyzerResult(category="cost", data=cost_summary)
+        plan_data = context.get_plan_data()
+        # Calculate costs based on plan data
+        cost_summary = {
+            "total_cost": 123.45,
+            "resources": {
+                "aws_instance": 100.00,
+                "aws_s3_bucket": 23.45
+            }
+        }
+        return AnalyzerResult(
+            category=self.category,
+            data=cost_summary
+        )
+
+def register(context):
+    context.register_analyzer(CostAnalyzer())
 ```
 
-**Register your analyzer:**
+## Creating Custom Reporters
+
+Reporters format and output analysis results. Here's how to create a custom reporter:
+
 ```python
-context.register_analyzer(CostAnalyzer())
+from tfsumpy.reporter import ReporterInterface
+from tfsumpy.analyzer import AnalyzerCategory
+
+class MyReporter(ReporterInterface):
+    @property
+    def category(self) -> AnalyzerCategory:
+        return AnalyzerCategory.PLAN  # or your custom category
+    
+    def print_report(self, data, **kwargs):
+        # Your reporting logic here
+        print(f"Custom Report: {data}")
+
+def register(context):
+    context.register_reporter(MyReporter())
 ```
-
----
-
-## Custom Reporters
-
-A custom reporter lets you control how results are displayed or sent elsewhere. For example, you might want to:
-- Send results to Slack or email
-- Output as HTML, JSON, or other formats
-- Integrate with dashboards or ticketing systems
 
 ### Example: Slack Reporter
 
 ```python
 from tfsumpy.reporter import ReporterInterface
-
-def send_to_slack(message):
-    # Implement your Slack integration here
-    pass
+from tfsumpy.analyzer import AnalyzerCategory
 
 class SlackReporter(ReporterInterface):
     @property
-    def category(self) -> str:
-        return "plan"  # or "cost" for your custom analyzer
-
+    def category(self) -> AnalyzerCategory:
+        return AnalyzerCategory.PLAN
+    
     def print_report(self, data, **kwargs):
-        # Format and send a message to Slack
-        message = f"Terraform Plan Summary: {data['total_changes']} changes"
+        # Format message for Slack
+        message = f"*Terraform Plan Summary*\n"
+        message += f"Total Changes: {data['total_changes']}\n"
+        message += f"Create: {data['create']}\n"
+        message += f"Update: {data['update']}\n"
+        message += f"Delete: {data['delete']}"
+        
+        # Send to Slack (implement your Slack integration)
         send_to_slack(message)
-```
-
-**Register your reporter:**
-```python
-context.register_reporter(SlackReporter())
-```
-
----
-
-## Using Your Extensions
-
-Once registered, your custom analyzers and reporters are used by the tfsumpy `Context` just like the built-in ones:
-
-```python
-context = Context()
-context.register_analyzer(CostAnalyzer())
-context.register_reporter(SlackReporter())
-
-# Run your custom analysis
-results = context.run_analyzers("cost", plan_path="plan.json")
-context.run_reports("cost", results[0].data)
-```
-
----
-
-## Tips
-- You can register multiple analyzers and reporters for the same category.
-- Use the `category` property to control which analyzers/reporters are triggered for each type of analysis.
-- See the [API Reference](api/analyzers.md) and [API Reference: Reporters](api/reporters.md) for more details.
-
----
-
-## Need More?
-If you have a use case not covered here, open an issue or contribute your extension to the project!
-
----
-
-## Plugin System (Plug & Play)
-
-tfsumpy supports plug-and-play extensions via plugins. Plugins are Python files placed in a `plugins/` directory (or a custom directory specified with `--plugin-dir`).
-
-- Each plugin should define a `register(context)` function that registers analyzers/reporters.
-- tfsumpy will automatically load and register all plugins in the directory at startup.
-
-### Example Plugin
-
-Create a file `plugins/my_cost_plugin.py`:
-
-```python
-from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult
-
-class MyCostAnalyzer(AnalyzerInterface):
-    @property
-    def category(self):
-        return "cost"
-    def analyze(self, context, **kwargs):
-        return AnalyzerResult(category="cost", data={"total_cost": 42})
 
 def register(context):
-    context.register_analyzer(MyCostAnalyzer())
+    context.register_reporter(SlackReporter())
 ```
 
-### Using Plugins
+## Using Your Plugins
 
-- By default, tfsumpy loads plugins from the `plugins/` directory in your project.
-- You can specify a different directory with the `--plugin-dir` CLI flag:
+1. Create a directory for your plugins:
+```bash
+mkdir my_plugins
+```
 
+2. Create your plugin file:
+```bash
+touch my_plugins/my_analyzer.py
+```
+
+3. Add your analyzer/reporter code to the file
+
+4. Use your plugins:
 ```bash
 tfsumpy plan.json --plugin-dir my_plugins/
 ```
 
-All plugins in the directory will be loaded and their analyzers/reporters registered automatically. 
+## Best Practices
+
+1. **Error Handling**: Always handle potential errors in your analyzers and reporters
+2. **Logging**: Use the context's logger for consistent logging
+3. **Configuration**: Use the context's configuration for customizable behavior
+4. **Testing**: Write tests for your plugins
+5. **Documentation**: Document your plugin's functionality and requirements
+
+## API Reference
+
+- [Analyzers API](api/analyzers.md): Detailed analyzer interface documentation
+- [Reporters API](api/reporters.md): Detailed reporter interface documentation
+- [Models API](api/models.md): Data structures and types 

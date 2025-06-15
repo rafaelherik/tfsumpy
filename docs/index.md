@@ -1,130 +1,164 @@
-# tfsumpy: Effortless Terraform Plan Summaries
+# tfsumpy Documentation
 
-Welcome to **tfsumpy** — the modern, Python-based CLI tool for summarizing and reviewing Terraform plan files. Instantly understand what will change in your infrastructure, catch surprises, and share clear, readable summaries with your team.
+Welcome to the tfsumpy documentation. This guide will help you understand how to use and extend tfsumpy effectively.
 
----
+## Quick Links
 
-## 🚀 Why tfsumpy?
+- [Getting Started](getting_started.md): Installation and basic usage
+- [Features](features/): Core features and capabilities
+- [API Reference](api/): Detailed API documentation
+- [Extending](extending.md): Creating custom analyzers and reporters
 
-- **Instant Plan Summaries:** See what will be created, updated, or destroyed at a glance.
-- **Multiple Output Formats:** Console, Markdown, and JSON output for any use case.
-- **Template-Based Output:** Consistent, customizable output formats.
-- **Sensitive Data Protection:** Automatically redact secrets and sensitive values.
-- **Customizable:** Configure redaction and output to fit your workflow.
-- **No Cloud Required:** Runs locally, works with any Terraform JSON plan.
+## Core Features
 
----
+- **Plan Analysis**: Detailed analysis of Terraform plan files
+- **Multiple Output Formats**: Console, Markdown, and JSON output
+- **Sensitive Data Protection**: Automatic redaction of sensitive values
+- **AI Integration**: AI-powered change summarization
+- **Plugin System**: Extensible architecture for custom analyzers and reporters
 
-## 🔥 Quick Start
+## Getting Started
 
-### 1. Install
-```bash
-pip install tfsumpy
-```
+For a complete guide to getting started with tfsumpy, including installation, basic usage, and common scenarios, see our [Getting Started Guide](getting_started.md).
 
-### 2. Generate a Terraform plan JSON
+### Basic Usage
+
+1. Generate a Terraform plan JSON file:
 ```bash
 terraform plan -out=tfplan
 terraform show -json tfplan > plan.json
 ```
 
-### 3. Summarize your plan
+2. Analyze the plan:
 ```bash
 tfsumpy plan.json
 ```
 
----
+## Output Formats
 
-## 💡 Usage Scenarios
-
-### Basic Summary
+### Console Output (Default)
 ```bash
 tfsumpy plan.json
 ```
-Shows a concise summary of all resource changes.
 
-### Detailed Attribute Changes
+### Markdown Output
 ```bash
-tfsumpy plan.json --hide-changes=false
+tfsumpy plan.json --output markdown
 ```
-See exactly which attributes will change for each resource.
 
-### Full Resource Details
+### JSON Output
 ```bash
-tfsumpy plan.json --detailed
+tfsumpy plan.json --output json
 ```
-Get a deep dive into every resource and its planned state.
 
-### Output Formats
+## AI Integration
 
-#### Console Output (Default)
+tfsumpy supports AI-powered change summarization using OpenAI, Gemini, and Anthropic. For detailed information about AI analysis features, see our [AI Analysis Guide](features/ai_analysis.md).
+
+Basic usage:
 ```bash
-tfsumpy plan.json
+# Using OpenAI
+tfsumpy plan.json --output markdown --ai openai YOUR_API_KEY
+
+# Using Google Gemini
+tfsumpy plan.json --output markdown --ai gemini YOUR_API_KEY
+
+# Using Anthropic Claude
+tfsumpy plan.json --output markdown --ai anthropic YOUR_API_KEY
 ```
-Color-coded, human-readable output in your terminal.
 
-#### Markdown Output
-```bash
-tfsumpy plan.json --output markdown > plan_summary.md
-```
-Generates a beautiful Markdown summary, perfect for code reviews or documentation.
+## Configuration
 
-#### JSON Output
-```bash
-tfsumpy plan.json --output json > plan_summary.json
-```
-Structured JSON output for integration with other tools or automation.
+Create a `config.json` file to customize behavior:
 
-### Custom Redaction & Config
-```bash
-tfsumpy plan.json --config myconfig.json
-```
-Redact custom patterns or tweak output using a JSON config file.
-
-### Debugging
-```bash
-tfsumpy plan.json --debug
-```
-Enables verbose logging for troubleshooting.
-
----
-
-## ⚙️ Configuration Example
-
-Create a `config.json` to redact custom sensitive patterns:
 ```json
 {
   "sensitive_patterns": [
-    { "pattern": "password|secret|key", "replacement": "[REDACTED]" }
+    {
+      "pattern": "\\b(?:password|secret|key)\\b",
+      "replacement": "[REDACTED]"
+    }
   ]
 }
 ```
 
----
+Use the configuration:
+```bash
+tfsumpy plan.json --config config.json
+```
 
-## 📚 Documentation & API
+## Extending tfsumpy
 
-- [Plan Analysis](features/plan_analysis.md): How tfsumpy analyzes your plans
-- [Configuration](usage/configuration.md): Customizing output and redaction
-- [Advanced Usage](usage/advanced_usage.md): Output formats and more
-- [Analyzers API](api/analyzers.md): Extend or integrate tfsumpy
-- [Reporters API](api/reporters.md): Custom output formats
-- [Models API](api/models.md): Data structures
+### Custom Analyzers
 
----
+Create a Python file in the `plugins/` directory:
 
-## 🤝 Contributing
+```python
+from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult
+
+class MyAnalyzer(AnalyzerInterface):
+    @property
+    def category(self):
+        return "custom"
+    
+    def analyze(self, context, **kwargs):
+        return AnalyzerResult(
+            category="custom",
+            data={"result": "analysis"}
+        )
+
+def register(context):
+    context.register_analyzer(MyAnalyzer())
+```
+
+### Custom Reporters
+
+```python
+from tfsumpy.reporter import ReporterInterface
+
+class MyReporter(ReporterInterface):
+    @property
+    def category(self):
+        return "custom"
+    
+    def print_report(self, data, **kwargs):
+        # Your custom reporting logic here
+        pass
+
+def register(context):
+    context.register_reporter(MyReporter())
+```
+
+Load custom plugins:
+```bash
+tfsumpy plan.json --plugin-dir my_plugins/
+```
+
+## Development
+
+This project uses [Taskfile](https://taskfile.dev) for development tasks:
+
+```bash
+# Install dependencies
+task install
+
+# Run tests
+task test
+
+# Run linting
+task lint
+```
+
+## API Reference
+
+- [Analyzers API](api/analyzers.md): Extending with custom analyzers
+- [Reporters API](api/reporters.md): Creating custom output formats
+- [Models API](api/models.md): Data structures and types
+
+## Contributing
 
 We welcome contributions! See our [Contributing Guide](contributing.md) to get started.
 
----
+## License
 
-## 📝 License
-
-tfsumpy is released under the MIT License. See the [LICENSE](https://github.com/rafaelherik/tfsumpy/blob/main/LICENSE) file for details.
-
----
-
-## 🚦 Project Status
-
-**Status:** Beta — Feedback and contributions are welcome! 
+tfsumpy is released under the MIT License. See the [LICENSE](https://github.com/rafaelherik/tfsumpy/blob/main/LICENSE) file for details. 

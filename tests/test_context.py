@@ -2,16 +2,20 @@ import pytest
 import json
 import tempfile
 from unittest.mock import Mock, patch
-from tfsumpy.context import Context
-from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult
+from tfsumpy.context import Context, ConfigurationError
+from tfsumpy.analyzer import AnalyzerInterface, AnalyzerResult, AnalyzerCategory
 from tfsumpy.reporter import ReporterInterface
 
 @pytest.fixture
 def mock_analyzer():
     """Fixture for creating a mock analyzer."""
     analyzer = Mock(spec=AnalyzerInterface)
-    analyzer.category = "test_category"
-    analyzer.analyze.return_value = AnalyzerResult(category="test_category", data=[])
+    analyzer.category = AnalyzerCategory.PLAN
+    analyzer.analyze.return_value = AnalyzerResult(
+        category=AnalyzerCategory.PLAN,
+        data=[],
+        success=True
+    )
     return analyzer
 
 @pytest.fixture
@@ -28,11 +32,7 @@ def sample_config():
         "sensitive_patterns": [
             {"pattern": "test_pattern", "replacement": "***"},
             {"pattern": "password", "replacement": "###"}
-        ],
-        "risk_rules": {
-            "high": [{"pattern": "test_rule", "message": "test message"}],
-            "medium": [{"pattern": "medium_rule", "message": "medium message"}]
-        }
+        ]
     }
 
 @pytest.fixture
@@ -51,6 +51,7 @@ def test_context_initialization():
     assert isinstance(context.sensitive_patterns, list)
     assert isinstance(context._analyzers, dict)
     assert isinstance(context._reporters, dict)
+    assert context.plan_data is None
 
     # Test debug mode
     context_debug = Context(debug=True)
@@ -66,11 +67,11 @@ def test_analyzer_registration(mock_analyzer):
     
     # Test successful registration
     context.register_analyzer(mock_analyzer)
-    assert mock_analyzer in context.get_analyzers("test_category")
+    assert mock_analyzer in context.get_analyzers(AnalyzerCategory.PLAN)
     
     # Test duplicate registration
-    context.register_analyzer(mock_analyzer)
-    assert len(context.get_analyzers("test_category")) == 1
+    with pytest.raises(ValueError):
+        context.register_analyzer(mock_analyzer)
     
     # Test invalid analyzer
     with pytest.raises(ValueError):
@@ -85,8 +86,8 @@ def test_reporter_registration(mock_reporter):
     assert mock_reporter in context.get_reporters("test_category")
     
     # Test duplicate registration
-    context.register_reporter(mock_reporter)
-    assert len(context.get_reporters("test_category")) == 1
+    with pytest.raises(ValueError):
+        context.register_reporter(mock_reporter)
     
     # Test invalid reporter
     with pytest.raises(ValueError):
@@ -98,18 +99,21 @@ def test_run_analyzers(mock_analyzer):
     context.register_analyzer(mock_analyzer)
     
     # Test successful execution
-    results = context.run_analyzers("test_category")
+    results = context.run_analyzers(AnalyzerCategory.PLAN)
     assert len(results) == 1
+    assert results[0].success is True
     mock_analyzer.analyze.assert_called_once()
     
     # Test execution with no analyzers
-    results = context.run_analyzers("non_existent_category")
-    assert len(results) == 0
+    with pytest.raises(RuntimeError):
+        context.run_analyzers(AnalyzerCategory.SECURITY)
     
     # Test execution with failing analyzer
     mock_analyzer.analyze.side_effect = Exception("Test error")
-    results = context.run_analyzers("test_category")
-    assert len(results) == 0
+    results = context.run_analyzers(AnalyzerCategory.PLAN)
+    assert len(results) == 1
+    assert results[0].success is False
+    assert "Test error" in results[0].error
 
 def test_run_reporters(mock_reporter):
     """Test reporter execution functionality."""
@@ -141,13 +145,31 @@ def test_plan_data_management():
     context.set_plan_data(new_data)
     assert context.get_plan_data() == new_data
 
+def test_load_config_validation():
+    """Test configuration validation."""
+    context = Context()
+    
+    # Test missing required keys
+    with pytest.raises(ConfigurationError):
+        context._validate_config({})
+    
+    # Test invalid sensitive_patterns type
+    with pytest.raises(ConfigurationError):
+        context._validate_config({"sensitive_patterns": "invalid"})
+    
+    # Test invalid pattern format
+    with pytest.raises(ConfigurationError):
+        context._validate_config({
+            "sensitive_patterns": [{"invalid": "format"}]
+        })
+
 @patch('builtins.open')
 def test_load_config_file_not_found(mock_open):
     """Test configuration loading with missing file."""
     mock_open.side_effect = FileNotFoundError
     context = Context()
     
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ConfigurationError):
         context.load_config()
 
 def test_load_config_with_external(config_file, sample_config):
@@ -166,5 +188,13 @@ def test_load_config_invalid_json(mock_json_load):
     mock_json_load.side_effect = json.JSONDecodeError("Test error", "", 0)
     context = Context()
     
-    with pytest.raises(json.JSONDecodeError):
-        context.load_config() 
+    with pytest.raises(ConfigurationError):
+        context.load_config()
+
+def test_process_config_error():
+    """Test error handling in config processing."""
+    context = Context()
+    context.config = {"sensitive_patterns": [{"invalid": "format"}]}
+    
+    with pytest.raises(ConfigurationError):
+        context._process_config() 

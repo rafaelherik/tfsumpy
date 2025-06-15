@@ -1,18 +1,24 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..reporters.base_reporter import BaseReporter
 from ..reporter import ReporterInterface
 import json as _json
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, PackageLoader, select_autoescape
 from datetime import datetime
+import os
+from ..ai.base import AIBase
 
-class PlanReporter(BaseReporter, ReporterInterface):
+class PlanReporter(BaseReporter, ReporterInterface, AIBase):
     """Handles formatting and display of Terraform plan results."""
     
     def __init__(self):
         """Initialize the plan reporter."""
-        super().__init__()
+        # Initialize all parent classes
+        BaseReporter.__init__(self)
+        ReporterInterface.__init__(self)
+        AIBase.__init__(self)
+        
         self.logger = logging.getLogger(__name__)
         # Initialize Jinja2 environment
         template_dir = Path(__file__).parent.parent / 'templates'
@@ -201,30 +207,25 @@ class PlanReporter(BaseReporter, ReporterInterface):
         
         self._write('\n'.join(lines))
 
-    def print_report_markdown(self, data: Any, **kwargs) -> None:
-        """Print the plan analysis report in markdown format.
-        
-        Args:
-            data: Plan analysis results
-            **kwargs: Additional display options
-        """
-        report = self.get_report(data, **kwargs)
-        show_details = kwargs.get('show_details', False)
-        show_changes = kwargs.get('show_changes', False)
-
-        # Process resources
+    def _prepare_report_data(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False) -> Dict[str, Any]:
+        """Prepare data for report generation."""
+        report = self.get_report(data, **{'show_changes': show_changes, 'show_details': show_details})
         processed_resources = self._process_resources(
             report.get('resources', []),
             show_changes=show_changes,
             show_details=show_details
         )
-
-        # Prepare template data
-        template_data = {
+        
+        # Create summary section
+        summary = {
             'total_resources': report['total_changes'],
             'resources_to_add': report['change_breakdown']['create'],
             'resources_to_change': report['change_breakdown']['update'],
-            'resources_to_destroy': report['change_breakdown']['delete'],
+            'resources_to_destroy': report['change_breakdown']['delete']
+        }
+        
+        return {
+            'summary': summary,
             'resources': processed_resources,
             'show_changes': show_changes,
             'show_details': show_details,
@@ -232,50 +233,37 @@ class PlanReporter(BaseReporter, ReporterInterface):
             'analysis': []  # Placeholder for future analysis results
         }
 
-        # Load and render template
+    def print_report_markdown(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False, ai_config: Optional[Dict[str, Any]] = None) -> None:
+        """Print the report in markdown format."""
         template = self.env.get_template('plan_report.md')
-        output = template.render(**template_data)
+        report_data = self._prepare_report_data(data, show_changes, show_details)
         
-        # Write the output
-        self._write(output)
-
-    def print_report_json(self, data: Any, **kwargs) -> None:
-        """Print the plan analysis report in JSON format.
+        # Add AI summary if configured
+        if ai_config:
+            ai_summary = self.get_ai_summary(data, ai_config)
+            if ai_summary:
+                report_data['ai_summary'] = ai_summary
         
-        Args:
-            data: Plan analysis results
-            **kwargs: Additional display options
-        """
-        report = self.get_report(data, **kwargs)
-        show_details = kwargs.get('show_details', False)
-        show_changes = kwargs.get('show_changes', False)
+        # Add show_changes flag to template context
+        report_data['show_changes'] = show_changes
+        
+        self._write(template.render(**report_data))
 
-        # Process resources
-        processed_resources = self._process_resources(
-            report.get('resources', []),
-            show_changes=show_changes,
-            show_details=show_details
-        )
-
-        # Prepare JSON output structure
-        json_output = {
-            'metadata': {
-                'timestamp': datetime.now().isoformat(),
-                'version': '1.0',
-                'format': 'json'
-            },
-            'summary': {
-                'total_resources': report['total_changes'],
-                'resources_to_add': report['change_breakdown']['create'],
-                'resources_to_change': report['change_breakdown']['update'],
-                'resources_to_destroy': report['change_breakdown']['delete']
-            },
-            'resources': processed_resources
+    def print_report_json(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False, ai_config: Optional[Dict[str, Any]] = None) -> None:
+        """Print the report in JSON format."""
+        report_data = self._prepare_report_data(data, show_changes, show_details)
+        
+        # Add AI summary if configured
+        if ai_config:
+            ai_summary = self.get_ai_summary(data, ai_config)
+            if ai_summary:
+                report_data['ai_summary'] = ai_summary
+        
+        # Add metadata
+        report_data['metadata'] = {
+            'timestamp': datetime.now().isoformat(),
+            'version': '0.2.0',
+            'format': 'json'
         }
-
-        # Add analysis section if available
-        if 'analysis' in report:
-            json_output['analysis'] = report['analysis']
-
-        # Write the JSON output with proper formatting
-        self._write(_json.dumps(json_output, indent=2)) 
+        
+        self._write(_json.dumps(report_data, indent=2)) 
