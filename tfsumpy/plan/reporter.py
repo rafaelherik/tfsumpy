@@ -1,8 +1,11 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from ..reporters.base_reporter import BaseReporter
 from ..reporter import ReporterInterface
 import json as _json
+from pathlib import Path
+from jinja2 import Environment, FileSystemLoader
+from datetime import datetime
 
 class PlanReporter(BaseReporter, ReporterInterface):
     """Handles formatting and display of Terraform plan results."""
@@ -11,6 +14,13 @@ class PlanReporter(BaseReporter, ReporterInterface):
         """Initialize the plan reporter."""
         super().__init__()
         self.logger = logging.getLogger(__name__)
+        # Initialize Jinja2 environment
+        template_dir = Path(__file__).parent.parent / 'templates'
+        self.env = Environment(
+            loader=FileSystemLoader(str(template_dir)),
+            trim_blocks=True,
+            lstrip_blocks=True
+        )
 
     @property
     def category(self) -> str:
@@ -37,6 +47,66 @@ class PlanReporter(BaseReporter, ReporterInterface):
         except Exception as e:
             self.logger.error(f"Error processing report: {str(e)}")
             raise
+
+    def _process_resources(self, resources: List[Dict], show_changes: bool = False, show_details: bool = False) -> List[Dict]:
+        """Process resources and their changes.
+        
+        Args:
+            resources: List of resources to process
+            show_changes: Whether to include attribute changes
+            show_details: Whether to include additional details
+            
+        Returns:
+            List[Dict]: Processed resources with changes and details
+        """
+        processed_resources = []
+        for resource in resources:
+            resource_data = {
+                'resource_type': resource['resource_type'],
+                'identifier': resource['identifier'],
+                'action': resource['action'],
+                'provider': resource.get('provider', 'unknown'),
+                'module': resource.get('module', 'root')
+            }
+
+            # Process changes if requested
+            if show_changes:
+                before = resource.get('before', {}) or {}
+                after = resource.get('after', {}) or {}
+                changes = []
+                
+                # Get all changed attributes
+                all_attrs = set(before.keys()) | set(after.keys())
+                skip_attrs = {'id', 'tags_all'}  # Skip internal attributes
+                
+                for attr in sorted(all_attrs - skip_attrs):
+                    before_val = before.get(attr)
+                    after_val = after.get(attr)
+                    
+                    if before_val != after_val:
+                        changes.append({
+                            'attribute': attr,
+                            'before': before_val,
+                            'after': after_val
+                        })
+                
+                if changes:
+                    resource_data['changes'] = changes
+
+            # Add additional details if requested
+            if show_details:
+                resource_data['details'] = {
+                    'dependencies': resource.get('dependencies', []),
+                    'tags': resource.get('tags', {}),
+                    'raw': {
+                        'before': resource.get('before', {}),
+                        'after': resource.get('after', {})
+                    }
+                }
+
+            processed_resources.append(resource_data)
+        
+        return processed_resources
 
     def print_report(self, data: Any, **kwargs) -> None:
         """Print the plan analysis report.
@@ -133,6 +203,7 @@ class PlanReporter(BaseReporter, ReporterInterface):
 
     def print_report_markdown(self, data: Any, **kwargs) -> None:
         """Print the plan analysis report in markdown format.
+        
         Args:
             data: Plan analysis results
             **kwargs: Additional display options
@@ -141,50 +212,70 @@ class PlanReporter(BaseReporter, ReporterInterface):
         show_details = kwargs.get('show_details', False)
         show_changes = kwargs.get('show_changes', False)
 
-        # Markdown header
-        self._write(f"# Terraform Plan Summary\n\n")
-        self._write(f"## Summary\n\n")
-        self._write(f"- **Total Changes:** {report['total_changes']}\n")
-        for action in ['create', 'update', 'delete']:
-            count = report['change_breakdown'][action]
-            self._write(f"- **{action.title()}:** {count}\n")
+        # Process resources
+        processed_resources = self._process_resources(
+            report.get('resources', []),
+            show_changes=show_changes,
+            show_details=show_details
+        )
 
-        if show_details or show_changes:
-            if 'resources' not in report:
-                raise ValueError("Report missing resource details")
-            self._write(f"\n## Resource Changes\n\n")
-            action_order = [
-                ('create', 'Created Resources', '🟩'),
-                ('update', 'Updated Resources', '🟦'),
-                ('delete', 'Destroyed Resources', '🟥'),
-            ]
-            resources_by_action = {action: [] for action, _, _ in action_order}
-            for resource in report['resources']:
-                act = resource['action']
-                if act in resources_by_action:
-                    resources_by_action[act].append(resource)
-                else:
-                    resources_by_action.setdefault(act, []).append(resource)
-            for action, section_title, badge in action_order:
-                if resources_by_action[action]:
-                    self._write(f"### {badge} {section_title}\n\n")
-                    for resource in resources_by_action[action]:
-                        action_str = resource['action'].upper()
-                        self._write(f"#### `{resource['resource_type']}`: `{resource['identifier']}`\n")
-                        # Show changes as JSON code block
-                        before = resource.get('before', {}) or {}
-                        after = resource.get('after', {}) or {}
-                        if action == 'create':
-                            self._write(f"```json\n{_json.dumps(after, indent=2)}\n```")
-                            self._write("\n")
-                        elif action == 'delete':
-                            self._write(f"```json\n{_json.dumps(before, indent=2)}\n```")
-                            self._write("\n")
-                        else:  # update
-                            self._write(f"**Before:**\n")
-                            self._write(f"```json\n{_json.dumps(before, indent=2)}\n```")
-                            self._write("\n")
-                            self._write(f"**After:**\n")
-                            self._write(f"```json\n{_json.dumps(after, indent=2)}\n```")
-                            self._write("\n")
-                        self._write("\n") 
+        # Prepare template data
+        template_data = {
+            'total_resources': report['total_changes'],
+            'resources_to_add': report['change_breakdown']['create'],
+            'resources_to_change': report['change_breakdown']['update'],
+            'resources_to_destroy': report['change_breakdown']['delete'],
+            'resources': processed_resources,
+            'show_changes': show_changes,
+            'show_details': show_details,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'analysis': []  # Placeholder for future analysis results
+        }
+
+        # Load and render template
+        template = self.env.get_template('plan_report.md')
+        output = template.render(**template_data)
+        
+        # Write the output
+        self._write(output)
+
+    def print_report_json(self, data: Any, **kwargs) -> None:
+        """Print the plan analysis report in JSON format.
+        
+        Args:
+            data: Plan analysis results
+            **kwargs: Additional display options
+        """
+        report = self.get_report(data, **kwargs)
+        show_details = kwargs.get('show_details', False)
+        show_changes = kwargs.get('show_changes', False)
+
+        # Process resources
+        processed_resources = self._process_resources(
+            report.get('resources', []),
+            show_changes=show_changes,
+            show_details=show_details
+        )
+
+        # Prepare JSON output structure
+        json_output = {
+            'metadata': {
+                'timestamp': datetime.now().isoformat(),
+                'version': '1.0',
+                'format': 'json'
+            },
+            'summary': {
+                'total_resources': report['total_changes'],
+                'resources_to_add': report['change_breakdown']['create'],
+                'resources_to_change': report['change_breakdown']['update'],
+                'resources_to_destroy': report['change_breakdown']['delete']
+            },
+            'resources': processed_resources
+        }
+
+        # Add analysis section if available
+        if 'analysis' in report:
+            json_output['analysis'] = report['analysis']
+
+        # Write the JSON output with proper formatting
+        self._write(_json.dumps(json_output, indent=2)) 

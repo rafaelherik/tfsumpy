@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tfsumpy"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Python tool for Terraform state summary"
 authors = ["Rafael H de Carvalho <rafaelherik@gmail.com>"]
 readme = "README.md"
@@ -30,11 +30,19 @@ pytest = ">=7.0.0"
 pyyaml = ">=5.1"
 jsonschema = ">=3.2.0"
 colorama = ">=0.4.6"
+jinja2 = "^3.1.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = ">=4.1.0"
 pytest-mock = ">=3.6.1"
 coverage = ">=7.2.0"
+
+[tool.poetry.extras]
+dev = [
+    "pytest-cov",
+    "pytest-mock",
+    "coverage"
+]
 
 [tool.poetry.scripts]
 tfsumpy = "tfsumpy.__main__:main"
