@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.2.0] - 2024-06-15
+
+### 🎨 Enhanced Output Formats and CLI Arguments
+
+This release introduces multiple output formats and improved CLI arguments for better usability and integration capabilities.
+
+### Major Changes
+
+- **Multiple Output Formats:**
+  - Added support for three output formats:
+    - Console output (default): Colorized, human-readable format
+    - Markdown output: Structured markdown for documentation and code reviews
+    - JSON output: Machine-readable format for integration with other tools
+  - Each format maintains consistent data structure while optimizing for its use case
+
+- **Improved CLI Arguments:**
+  - New output format options:
+    - `--output`: Choose between 'default', 'markdown', or 'json' formats
+    - `--detailed`: Show detailed resource information
+    - `--hide-changes`: Hide detailed attribute changes
+  - Deprecated arguments (with backward compatibility):
+    - `--changes` → Use `--hide-changes` instead
+    - `--details` → Use `--detailed` instead
+    - `--markdown` → Use `--output markdown` instead
+
+- **Code Quality Improvements:**
+  - Refactored reporter implementation to follow DRY principles
+  - Centralized resource processing logic
+  - Improved test coverage for all output formats
+  - Enhanced error handling and validation
+
+### Migration Notes
+
+- The deprecated arguments will be removed in a future version
+- Update your scripts and CI/CD pipelines to use the new argument names
+- Consider using the JSON output format for better integration with other tools
+
+---
+
 ## [0.1.0] - 2024-06-05
 
 ### 🎉 Project Reborn: tfsumpy 0.1.0
