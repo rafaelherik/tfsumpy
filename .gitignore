@@ -81,3 +81,4 @@ poetry.lock
 
 # cursor rules
 .cursorrules
+.task/
