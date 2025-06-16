@@ -16,9 +16,17 @@ logger = logging.getLogger(__name__)
 
 # Default models for each provider
 DEFAULT_MODELS = {
-    'openai': 'gpt-3.5-turbo',
+    'openai': 'gpt-3.5-turbo',  # Using standard model for small plans
     'gemini': 'gemini-pro',
     'anthropic': 'claude-3-sonnet-20240229'
+}
+
+# Default configuration values
+DEFAULT_CONFIG = {
+    'max_tokens': 2000,  # Reduced for small plans
+    'temperature': 0.1,  # Low temperature for consistency
+    'timeout': 60,  # Standard timeout
+    'chunk_size': 20  # Increased chunk size for small plans
 }
 
 class TFSumpyError(Exception):
@@ -81,8 +89,10 @@ def get_ai_config(args: argparse.Namespace) -> Optional[Dict[str, Any]]:
         'provider': provider,
         'model': args.ai_model or DEFAULT_MODELS[provider],
         'api_key': api_key,
-        'max_tokens': args.ai_max_tokens,
-        'temperature': args.ai_temperature,
+        'max_tokens': args.ai_max_tokens or DEFAULT_CONFIG['max_tokens'],
+        'temperature': args.ai_temperature or DEFAULT_CONFIG['temperature'],
+        'timeout': args.ai_timeout or DEFAULT_CONFIG['timeout'],
+        'chunk_size': args.ai_chunk_size or DEFAULT_CONFIG['chunk_size'],
         'system_prompt': args.ai_system_prompt
     }
 
@@ -117,12 +127,20 @@ def main():
                          help='AI model to use (default varies by provider)')
     ai_group.add_argument('--ai-max-tokens',
                          type=int,
-                         default=1000,
-                         help='Maximum tokens for AI response (default: 1000)')
+                         default=2048,
+                         help='Maximum tokens for AI response (default: 2048)')
     ai_group.add_argument('--ai-temperature',
                          type=float,
-                         default=0.7,
-                         help='Temperature for AI response (default: 0.7)')
+                         default=0.1,
+                         help='Temperature for AI response (default: 0.1)')
+    ai_group.add_argument('--ai-timeout',
+                         type=int,
+                         default=60,
+                         help='Timeout in seconds for AI API calls (default: 60)')
+    ai_group.add_argument('--ai-chunk-size',
+                         type=int,
+                         default=20,
+                         help='Number of resources to process in each chunk (default: 20)')
     ai_group.add_argument('--ai-system-prompt',
                          help='Custom system prompt for AI')
     

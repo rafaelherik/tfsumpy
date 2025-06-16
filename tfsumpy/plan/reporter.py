@@ -25,8 +25,11 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         self.env = Environment(
             loader=FileSystemLoader(str(template_dir)),
             trim_blocks=True,
-            lstrip_blocks=True
+            lstrip_blocks=True,
+            autoescape=select_autoescape(['html', 'xml'])
         )
+        # Add custom filters
+        self.env.filters['to_json'] = self._to_json_filter
 
     @property
     def category(self) -> str:
@@ -70,9 +73,8 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
             resource_data = {
                 'resource_type': resource['resource_type'],
                 'identifier': resource['identifier'],
-                'action': resource['action'],
-                'provider': resource.get('provider', 'unknown'),
-                'module': resource.get('module', 'root')
+                'actions': resource['action'],
+                'module': resource['module']
             }
 
             # Process changes if requested
@@ -89,12 +91,36 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
                     before_val = before.get(attr)
                     after_val = after.get(attr)
                     
-                    if before_val != after_val:
+                    # Handle different operation types
+                    actions = resource['action'] if isinstance(resource['action'], list) else [resource['action']]
+                    if 'create' in actions and 'delete' in actions:
+                        # For delete+create, show both before and after values
                         changes.append({
                             'attribute': attr,
                             'before': before_val,
                             'after': after_val
                         })
+                    elif 'create' in actions:
+                        if after_val is not None:
+                            changes.append({
+                                'attribute': attr,
+                                'before': None,
+                                'after': after_val
+                            })
+                    elif 'delete' in actions:
+                        if before_val is not None:
+                            changes.append({
+                                'attribute': attr,
+                                'before': before_val,
+                                'after': None
+                            })
+                    elif 'update' in actions:
+                        if before_val != after_val:
+                            changes.append({
+                                'attribute': attr,
+                                'before': before_val,
+                                'after': after_val
+                            })
                 
                 if changes:
                     resource_data['changes'] = changes
@@ -105,8 +131,8 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
                     'dependencies': resource.get('dependencies', []),
                     'tags': resource.get('tags', {}),
                     'raw': {
-                        'before': resource.get('before', {}),
-                        'after': resource.get('after', {})
+                        'before': before,
+                        'after': after
                     }
                 }
 
@@ -124,17 +150,27 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         Raises:
             ValueError: If report format is invalid
         """
-        report = self.get_report(data, **kwargs)
-        show_details = kwargs.get('show_details', False)
-        show_changes = kwargs.get('show_changes', False)
+        try:
+            report = self.get_report(data, **kwargs)
+            show_details = kwargs.get('show_details', False)
+            show_changes = kwargs.get('show_changes', False)
 
-        self._print_header("Terraform Plan Analysis")
-        self._print_summary(report)
-        
-        if show_details or show_changes:
-            if 'resources' not in report:
-                raise ValueError("Report missing resource details")
-            self._print_resource_details(report['resources'], show_changes)
+            if show_changes or show_details:
+                self._print_header("Terraform Plan Analysis")
+                self._print_summary(report)
+                
+                if 'resources' not in report:
+                    raise ValueError("Report missing resource details")
+                self._print_resource_details(report['resources'], show_changes)
+            else:
+                # Only show a minimal message for default output without changes
+                self._write("Analysis complete.\n")
+        except ValueError as e:
+            self._write(f"Error: {str(e)}\n")
+            raise
+        except Exception as e:
+            self._write(f"An unexpected error occurred: {str(e)}\n")
+            raise
 
     def _print_header(self, title: str) -> None:
         """Print a formatted header."""
@@ -147,8 +183,9 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         
         # Add change counts by type
         for action in ['create', 'update', 'delete']:
-            count = report['change_breakdown'][action]
-            self._write(f"{action.title()}: {count}\n")
+            count = report['change_breakdown'].get(action, 0)
+            if count > 0:  # Only show non-zero counts
+                self._write(f"{action.title()}: {count}\n")
 
     def _print_resource_details(self, resources: list, show_changes: bool = False) -> None:
         """Format the resource details section."""
@@ -158,11 +195,22 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         action_colors = {
             'CREATE': 'green',
             'UPDATE': 'blue',
-            'DELETE': 'red'
+            'DELETE': 'red',
+            'DELETE/CREATE': 'yellow'  # Special color for replace operations
         }
         
         for resource in resources:
-            action_str = resource['action'].upper()
+            # Handle both single action and list of actions
+            actions = resource.get('actions', resource.get('action', []))
+            if not isinstance(actions, list):
+                actions = [actions]
+            
+            # Determine the display action and color
+            if isinstance(actions, list) and 'delete' in actions and 'create' in actions:
+                action_str = 'DELETE/CREATE'
+            else:
+                action_str = actions[0].upper()
+            
             # Color the action string based on the action type
             colored_action = self._colorize(action_str, action_colors.get(action_str, 'bold'))
             self._write(
@@ -179,7 +227,7 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         before = resource.get('before', {}) or {}
         after = resource.get('after', {}) or {}
         
-        # Get all changed attributes
+        # Get all attributes
         all_attrs = set(before.keys()) | set(after.keys())
         skip_attrs = {'id', 'tags_all'}  # Skip internal attributes
         
@@ -187,25 +235,64 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         symbol_colors = {
             '+': 'green',   # create
             '~': 'blue',    # update
-            '-': 'red'      # delete
+            '-': 'red',     # delete
+            '-/+': 'yellow' # replace
         }
+        
+        # Get actions
+        actions = resource.get('actions', resource.get('action', []))
+        if not isinstance(actions, list):
+            actions = [actions]
+        
+        # Count unchanged attributes
+        unchanged_count = 0
         
         for attr in sorted(all_attrs - skip_attrs):
             before_val = before.get(attr)
             after_val = after.get(attr)
             
             if before_val != after_val:
-                if resource['action'] == 'create':
+                if isinstance(actions, list) and 'delete' in actions and 'create' in actions:
+                    symbol = self._colorize('-/+', symbol_colors['-/+'])
+                    lines.append(f"  {symbol} {attr} = {before_val} -> {after_val}")
+                elif 'create' in actions:
                     symbol = self._colorize('+', symbol_colors['+'])
                     lines.append(f"  {symbol} {attr} = {after_val}")
-                elif resource['action'] == 'delete':
+                elif 'delete' in actions:
                     symbol = self._colorize('-', symbol_colors['-'])
                     lines.append(f"  {symbol} {attr} = {before_val}")
                 else:  # update
                     symbol = self._colorize('~', symbol_colors['~'])
                     lines.append(f"  {symbol} {attr} = {before_val} -> {after_val}")
+            else:
+                unchanged_count += 1
+        
+        # Add unchanged count if there are any
+        if unchanged_count > 0:
+            lines.append(f"  {unchanged_count} attributes unchanged")
         
         self._write('\n'.join(lines))
+
+    def _colorize(self, text: str, color: str) -> str:
+        """Colorize text for terminal output.
+        
+        Args:
+            text: Text to colorize
+            color: Color to use
+            
+        Returns:
+            Colorized text
+        """
+        colors = {
+            'red': '\033[91m',
+            'green': '\033[92m',
+            'yellow': '\033[93m',
+            'blue': '\033[94m',
+            'bold': '\033[1m',
+            'reset': '\033[0m'
+        }
+        
+        return f"{colors.get(color, '')}{text}{colors['reset']}"
 
     def _prepare_report_data(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False) -> Dict[str, Any]:
         """Prepare data for report generation."""
@@ -216,13 +303,49 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
             show_details=show_details
         )
         
+        # Calculate summary statistics
+        total_resources = len(processed_resources)
+        resources_to_add = 0
+        resources_to_change = 0
+        resources_to_destroy = 0
+        
+        for r in processed_resources:
+            actions = r.get('actions', r.get('action', []))
+            if not isinstance(actions, list):
+                actions = [actions]
+            
+            # Count replace operations as both delete and create
+            if isinstance(actions, list) and 'delete' in actions and 'create' in actions:
+                resources_to_add += 1
+                resources_to_destroy += 1
+            elif 'create' in actions:
+                resources_to_add += 1
+            elif 'update' in actions:
+                resources_to_change += 1
+            elif 'delete' in actions:
+                resources_to_destroy += 1
+        
         # Create summary section
         summary = {
-            'total_resources': report['total_changes'],
-            'resources_to_add': report['change_breakdown']['create'],
-            'resources_to_change': report['change_breakdown']['update'],
-            'resources_to_destroy': report['change_breakdown']['delete']
+            'total_resources': total_resources,
+            'resources_to_add': resources_to_add,
+            'resources_to_change': resources_to_change,
+            'resources_to_destroy': resources_to_destroy
         }
+        
+        # Update change_breakdown in the report
+        report['change_breakdown'] = {
+            'create': resources_to_add,
+            'update': resources_to_change,
+            'delete': resources_to_destroy
+        }
+        
+        # Update total_changes to include all operations
+        report['total_changes'] = (
+            resources_to_add + 
+            resources_to_change + 
+            resources_to_destroy
+        )
         
         return {
             'summary': summary,
@@ -233,8 +356,16 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
             'analysis': []  # Placeholder for future analysis results
         }
 
+    def _to_json_filter(self, value: Any) -> str:
+        """Convert a value to JSON string."""
+        try:
+            return _json.dumps(value, default=str)
+        except Exception as e:
+            self.logger.error(f"Failed to convert value to JSON: {str(e)}")
+            return str(value)
+
     def print_report_markdown(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False, ai_config: Optional[Dict[str, Any]] = None) -> None:
-        """Print the report in markdown format."""
+        """Print the report in markdown format to a file."""
         template = self.env.get_template('plan_report.md')
         report_data = self._prepare_report_data(data, show_changes, show_details)
         
@@ -247,10 +378,22 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         # Add show_changes flag to template context
         report_data['show_changes'] = show_changes
         
-        self._write(template.render(**report_data))
+        # Format timestamp for markdown
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        report_data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Generate output filename
+        output_file = f"tfsumpy_output_{timestamp}.md"
+        
+        # Write to file
+        with open(output_file, 'w') as f:
+            f.write(template.render(**report_data))
+        
+        # Show success message
+        self._write(f"Markdown report written to: {output_file}\n")
 
     def print_report_json(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False, ai_config: Optional[Dict[str, Any]] = None) -> None:
-        """Print the report in JSON format."""
+        """Print the report in JSON format to a file."""
         report_data = self._prepare_report_data(data, show_changes, show_details)
         
         # Add AI summary if configured
@@ -260,10 +403,36 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
                 report_data['ai_summary'] = ai_summary
         
         # Add metadata
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         report_data['metadata'] = {
             'timestamp': datetime.now().isoformat(),
             'version': '0.2.0',
-            'format': 'json'
+            'format': 'json',
+            'summary': {
+                'total_resources': report_data['summary']['total_resources'],
+                'resources_to_add': report_data['summary']['resources_to_add'],
+                'resources_to_change': report_data['summary']['resources_to_change'],
+                'resources_to_destroy': report_data['summary']['resources_to_destroy']
+            }
         }
         
-        self._write(_json.dumps(report_data, indent=2)) 
+        # Generate output filename
+        output_file = f"tfsumpy_output_{timestamp}.json"
+        
+        # Write to file
+        with open(output_file, 'w') as f:
+            f.write(_json.dumps(report_data, indent=2))
+        
+        # Show success message
+        self._write(f"JSON report written to: {output_file}\n")
+
+    def _write(self, text: str) -> None:
+        """Write text to output.
+        
+        Args:
+            text: Text to write
+        """
+        if text.endswith('\n'):
+            print(text, end='')
+        else:
+            print(text) 

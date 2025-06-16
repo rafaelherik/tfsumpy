@@ -50,7 +50,11 @@ class PlanAnalyzer(AnalyzerInterface):
             # Generate summary statistics
             change_counts = {'create': 0, 'update': 0, 'delete': 0}
             for change in changes:
-                change_counts[change.action] += 1
+                # Handle both single action and list of actions
+                actions = change.action if isinstance(change.action, list) else [change.action]
+                for action in actions:
+                    if action in change_counts:
+                        change_counts[action] += 1
             
             self.logger.info(f"Found {len(changes)} resource changes")
             self.logger.debug(f"Change breakdown: {change_counts}")
@@ -91,10 +95,10 @@ class PlanAnalyzer(AnalyzerInterface):
         self.logger.debug(f"Found {len(resource_changes)} resource changes in plan")
         
         for change in resource_changes:
-            # Extract change action
-            action = change.get('change', {}).get('actions', ['no-op'])[0]
-            if action != 'no-op':
-                self.logger.debug(f"Processing {action} change for {change.get('address', '')}")
+            # Extract change actions
+            actions = change.get('change', {}).get('actions', ['no-op'])
+            if 'no-op' not in actions:
+                self.logger.debug(f"Processing {actions} change for {change.get('address', '')}")
                 
                 # Extract module information
                 address = change.get('address', '')
@@ -104,7 +108,7 @@ class PlanAnalyzer(AnalyzerInterface):
                 change_details = change.get('change', {})
                 
                 changes.append(ResourceChange(
-                    action=action,
+                    action=actions,  # Pass the full actions list
                     resource_type=change.get('type', ''),
                     identifier=self._sanitize_text(address),
                     changes=change_details.get('before_sensitive', {}),

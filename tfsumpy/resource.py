@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Union
 
 @dataclass
 class ResourceChange:
-    action: str
+    action: Union[str, List[str]]  # Can be a single action or list of actions
     resource_type: str
     identifier: str
     changes: List[str]
@@ -11,7 +11,7 @@ class ResourceChange:
     before: dict = None
     after: dict = None
 
-    def __init__(self, action: str, resource_type: str, identifier: str, 
+    def __init__(self, action: Union[str, List[str]], resource_type: str, identifier: str, 
                  changes: dict, module: str = 'root', before: dict = None, 
                  after: dict = None):
         self.action = action

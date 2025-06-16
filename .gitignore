@@ -80,5 +80,5 @@ Pipfile.lock
 poetry.lock
 
 # cursor rules
-.cursorrules
+.cursor/rules
 .task/

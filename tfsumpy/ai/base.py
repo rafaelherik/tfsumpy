@@ -22,7 +22,7 @@ class AIBase:
                 provider=config.get('provider', 'openai'),
                 model=config.get('model', 'gpt-3.5-turbo'),
                 api_key=config.get('api_key'),
-                max_tokens=config.get('max_tokens', 1000),
+                max_tokens=config.get('max_tokens', 10000),
                 temperature=config.get('temperature', 0.7),
                 system_prompt=config.get('system_prompt')
             )

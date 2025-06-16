@@ -1,9 +1,157 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Protocol
 import json
 import re
+import logging
+import asyncio
 from dataclasses import dataclass
 from ..models import ResourceChange
+import backoff
+
+try:
+    from openai import AsyncOpenAI
+except ImportError:
+    AsyncOpenAI = None
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+
+try:
+    from anthropic import AsyncAnthropic
+except ImportError:
+    AsyncAnthropic = None
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class AIProvider(Protocol):
+    """Protocol defining the interface for AI providers."""
+    async def generate_completion(self, prompt: str, content: str, max_tokens: int, temperature: float) -> str:
+        """Generate a completion from the AI model."""
+        pass
+
+class OpenAIProvider:
+    """OpenAI provider implementation."""
+    def __init__(self, api_key: str, model: str):
+        if AsyncOpenAI is None:
+            raise ImportError("OpenAI package is not installed")
+        self.client = AsyncOpenAI(api_key=api_key)
+        self.model = model
+        self.base_timeout = 60
+
+    @backoff.on_exception(
+        backoff.expo,
+        (Exception),
+        max_tries=3,
+        max_time=180,
+        jitter=backoff.full_jitter
+    )
+    async def generate_completion(self, prompt: str, content: str, max_tokens: int, temperature: float) -> str:
+        """Generate a completion from the OpenAI model with retry logic."""
+        try:
+            if not self.client.api_key:
+                raise ValueError("OpenAI API key is not set")
+
+            logger.debug(f"Making OpenAI API call with model {self.model}")
+            logger.debug(f"Content length: {len(content)} characters")
+            
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+                timeout=self.base_timeout
+            )
+            
+            if not response.choices:
+                raise ValueError("Empty response from OpenAI API")
+                
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "authentication" in error_msg:
+                logger.error("OpenAI API authentication failed. Please check your API key.")
+            elif "rate limit" in error_msg:
+                logger.error("OpenAI API rate limit exceeded. Please try again later.")
+            elif "timeout" in error_msg:
+                logger.error(f"OpenAI API request timed out after {self.base_timeout} seconds")
+            else:
+                logger.error(f"OpenAI API call failed: {str(e)}")
+            raise
+
+class GeminiProvider:
+    """Google Gemini provider implementation."""
+    def __init__(self, api_key: str, model: str):
+        if genai is None:
+            raise ImportError("Google Generative AI package not installed. Install with: pip install google-generativeai")
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel(model)
+
+    async def generate_completion(self, prompt: str, content: str, max_tokens: int, temperature: float) -> str:
+        try:
+            response = await asyncio.wait_for(
+                self.model.generate_content(
+                    f"{prompt}\n\n{content}",
+                    generation_config={
+                        "max_output_tokens": max_tokens,
+                        "temperature": temperature,
+                        "candidate_count": 1
+                    }
+                ),
+                timeout=30
+            )
+            return response.text
+        except asyncio.TimeoutError:
+            logger.error(f"Gemini API call timed out after 30 seconds")
+            raise TimeoutError("Gemini API call timed out")
+        except Exception as e:
+            logger.error(f"Gemini API call failed: {str(e)}")
+            raise
+
+class AnthropicProvider:
+    """Anthropic Claude provider implementation."""
+    def __init__(self, api_key: str, model: str):
+        if AsyncAnthropic is None:
+            raise ImportError("Anthropic package not installed. Install with: pip install anthropic")
+        self.client = AsyncAnthropic(api_key=api_key)
+        self.model = model
+
+    async def generate_completion(self, prompt: str, content: str, max_tokens: int, temperature: float) -> str:
+        try:
+            response = await asyncio.wait_for(
+                self.client.messages.create(
+                    model=self.model,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    system=prompt,
+                    messages=[
+                        {"role": "user", "content": content}
+                    ]
+                ),
+                timeout=30
+            )
+            return response.content[0].text
+        except asyncio.TimeoutError:
+            logger.error(f"Anthropic API call timed out after 30 seconds")
+            raise TimeoutError("Anthropic API call timed out")
+        except Exception as e:
+            logger.error(f"Anthropic API call failed: {str(e)}")
+            raise
+
+@dataclass
+class AnalysisResult:
+    """Structured result of the AI analysis."""
+    summary: Dict[str, Any]
+    facts: List[Dict[str, Any]]
+    categories: Dict[str, List[Dict[str, Any]]]
+    risks: List[Dict[str, Any]]
 
 @dataclass
 class SummarizerConfig:
@@ -11,9 +159,10 @@ class SummarizerConfig:
     provider: str  # 'openai', 'gemini', or 'anthropic'
     model: str
     api_key: str
-    max_tokens: int = 1000
-    temperature: float = 0.1  # Lower temperature for more deterministic results
+    max_tokens: int = 2048  # Set to 2048 for completion
+    temperature: float = 0.1
     system_prompt: Optional[str] = None
+    timeout: int = 60  # Default timeout in seconds
 
 class BaseSummarizer(ABC):
     """Base class for AI summarizers."""
@@ -21,6 +170,7 @@ class BaseSummarizer(ABC):
     def __init__(self, config: SummarizerConfig):
         self.config = config
         self._validate_config()
+        self.provider = self._create_provider()
     
     def _validate_config(self):
         """Validate the configuration."""
@@ -28,109 +178,216 @@ class BaseSummarizer(ABC):
             raise ValueError(f"API key is required for {self.config.provider}")
         if not self.config.model:
             raise ValueError(f"Model name is required for {self.config.provider}")
-    
-    def _prepare_changes_for_analysis(self, changes: List[ResourceChange]) -> str:
-        """Prepare changes for analysis while preserving original structure and counts."""
-        # Preserve original data structure but format for readability
-        formatted_changes = []
+        if self.config.timeout < 1:
+            raise ValueError("Timeout must be at least 1 second")
+
+    def _create_provider(self) -> AIProvider:
+        """Create the appropriate AI provider."""
+        providers = {
+            "openai": OpenAIProvider,
+            "gemini": GeminiProvider,
+            "anthropic": AnthropicProvider
+        }
         
-        for change in changes:
-            # Keep the original structure but ensure it's serializable
-            change_data = {
-                "action": change.action,
-                "resource_type": change.resource_type,
-                "identifier": change.identifier,
-                "data": change.data if change.data else {}
+        if self.config.provider not in providers:
+            raise ValueError(f"Unsupported provider: {self.config.provider}")
+        
+        return providers[self.config.provider](self.config.api_key, self.config.model)
+
+    def _get_combined_prompt(self) -> str:
+        """Get a combined prompt for all analysis stages."""
+        return """You are a Terraform expert. Analyze the provided Terraform changes and provide a comprehensive analysis.
+IMPORTANT: You MUST return a valid JSON object with NO additional text, comments, or explanations before or after the JSON.
+The JSON MUST be properly formatted and parseable. Here is the EXACT structure you must follow:
+
+{
+    "summary": {
+        "total_resources": number,  // Must match the total_changes from input
+        "changes_by_type": {
+            "create": number,  // Must match the input counts
+            "update": number,
+            "delete": number
+        },
+        "impact_level": "Low/Medium/High",
+        "key_components": ["list", "of", "main", "components"]
+    },
+    "facts": [
+        {
+            "fact": "string",
+            "type": "create/update/delete",
+            "resource": "string",
+            "impact": "Low/Medium/High"
+        }
+    ],
+    "categories": {
+        "networking": [
+            {
+                "resource": "string",
+                "change": "string",
+                "impact": "Low/Medium/High"
             }
-            formatted_changes.append(change_data)
-        
-        # Create a summary for context
-        summary_stats = {
-            "total_changes": len(changes),
-            "actions": {},
-            "resource_types": {}
+        ],
+        "compute": [...],
+        "storage": [...],
+        "security": [...],
+        "database": [...],
+        "monitoring": [...]
+    },
+    "risks": [
+        {
+            "risk": "string",
+            "level": "Low/Medium/High",
+            "affected_resources": ["list", "of", "resources"],
+            "mitigation": "string"
         }
-        
-        for change in changes:
-            # Count actions
-            action = change.action
-            summary_stats["actions"][action] = summary_stats["actions"].get(action, 0) + 1
+    ]
+}
+
+Requirements:
+1. Be precise with numbers and avoid speculation
+2. Focus on concrete changes and their impacts
+3. Group changes by infrastructure category
+4. Identify specific risks and mitigation steps
+5. Use consistent resource identifiers
+6. Assess impact based on resource importance and change type
+7. Return ONLY the JSON object, no other text
+8. Compact the JSON to reduce the return size
+9. Ensure all numbers match exactly with the input data"""
+
+    def _clean_change_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Clean and optimize change data to reduce token usage."""
+        if not data:
+            return {}
             
-            # Count resource types
-            resource_type = change.resource_type
-            summary_stats["resource_types"][resource_type] = summary_stats["resource_types"].get(resource_type, 0) + 1
-        
-        # Combine summary and detailed changes
-        analysis_data = {
-            "summary": summary_stats,
-            "changes": formatted_changes
+        # Only keep essential fields that are relevant for analysis
+        essential_fields = {
+            'name', 'type', 'provider', 'tags', 'count', 'for_each',
+            'depends_on', 'lifecycle', 'description', 'status'
         }
         
-        return json.dumps(analysis_data, indent=2, default=str)
-    
-    def _get_system_prompt(self) -> str:
-        """Get the deterministic system prompt for the AI model."""
-        if self.config.system_prompt:
-            return self.config.system_prompt
-        
-        return """You are a Terraform expert. Analyze the provided Terraform plan changes and create a detailed summary in markdown format.
+        cleaned_data = {}
+        for key, value in data.items():
+            # Skip empty values
+            if value is None or value == "":
+                continue
+                
+            # Keep essential fields
+            if key in essential_fields:
+                cleaned_data[key] = value
+                continue
+                
+            # For nested objects, recursively clean them
+            if isinstance(value, dict):
+                cleaned_nested = self._clean_change_data(value)
+                if cleaned_nested:
+                    cleaned_data[key] = cleaned_nested
+            # For lists, clean each item if it's a dict
+            elif isinstance(value, list):
+                cleaned_list = [
+                    self._clean_change_data(item) if isinstance(item, dict) else item
+                    for item in value
+                ]
+                if cleaned_list:
+                    cleaned_data[key] = cleaned_list
+                    
+        return cleaned_data
 
-The input contains a summary with accurate counts and the complete original change data. Use the summary counts for accurate reporting.
+    def _prepare_changes_for_analysis(self, changes: List[ResourceChange]) -> str:
+        """Prepare changes for analysis with optimized data."""
+        try:
+            formatted_changes = []
+            for change in changes:
+                # Include all essential information for accurate analysis
+                change_data = {
+                    "action": change.action,
+                    "resource_type": change.resource_type,
+                    "identifier": change.identifier,
+                    "name": change.name if hasattr(change, 'name') else change.identifier,
+                    "data": self._clean_change_data(change.data) if change.data else {},
+                    "changes": change.changes if hasattr(change, 'changes') else {},
+                    "before": change.before if hasattr(change, 'before') else {},
+                    "after": change.after if hasattr(change, 'after') else {}
+                }
+                formatted_changes.append(change_data)
+            
+            # Add metadata about the total changes
+            analysis_data = {
+                "total_changes": len(changes),
+                "changes_by_action": {
+                    "create": sum(1 for c in changes if c.action == "create"),
+                    "update": sum(1 for c in changes if c.action == "update"),
+                    "delete": sum(1 for c in changes if c.action == "delete")
+                },
+                "changes": formatted_changes
+            }
+            
+            # Convert to JSON with minimal whitespace
+            return json.dumps(analysis_data, separators=(',', ':'), default=str)
+        except Exception as e:
+            logger.error(f"Failed to prepare changes for analysis: {str(e)}")
+            raise
 
-FORMATTING RULES:
-- Use bullet points (-) for ALL lists and sections
-- No numbered lists allowed anywhere in the response
-- Use markdown headers (###) for main sections
-- Keep technical accuracy while ensuring readability
-- Be consistent in terminology and phrasing
+    def _format_analysis_result(self, result: AnalysisResult) -> str:
+        """Format the analysis result into a markdown report."""
+        try:
+            sections = []
 
-REQUIRED STRUCTURE - Include ALL sections even if empty:
+            # Summary Section
+            sections.append("### Change Overview")
+            sections.append(f"- Total Resources: {result.summary['total_resources']}")
+            sections.append("- Changes by Type:")
+            for change_type, count in result.summary['changes_by_type'].items():
+                sections.append(f"  - {change_type.title()}: {count}")
+            sections.append(f"- Overall Impact: {result.summary['impact_level']}")
+            sections.append("- Key Components:")
+            for component in result.summary['key_components']:
+                sections.append(f"  - {component}")
 
-### Summary
-- Total number of resources affected (use the exact count from summary.total_changes)
-- Breakdown of change types using exact counts from summary.actions
-- Key infrastructure components involved
-- Overall risk level (Low/Medium/High)
+            # Facts Section
+            sections.append("\n### Key Facts")
+            for fact in result.facts:
+                sections.append(f"- {fact['fact']} ({fact['type']})")
+                sections.append(f"  - Resource: {fact['resource']}")
+                sections.append(f"  - Impact: {fact['impact']}")
 
-### Changes Analysis
-- Resources being created and their purpose
-- Existing resources being modified and what's changing specifically
-- Resources being removed and cleanup implications
-- Critical dependencies between resources
+            # Categories Section
+            sections.append("\n### Changes by Category")
+            for category, changes in result.categories.items():
+                if changes:
+                    sections.append(f"\n#### {category.title()}")
+                    for change in changes:
+                        sections.append(f"- {change['resource']}")
+                        sections.append(f"  - Change: {change['change']}")
+                        sections.append(f"  - Impact: {change['impact']}")
 
-### Risk Assessment
-- High-priority risks that could cause service disruption
-- Security implications of the changes
-- Data loss or corruption possibilities
-- Performance impact concerns
-- Breaking changes that affect dependent systems
+            # Risks Section
+            sections.append("\n### Potential Risks")
+            for risk in result.risks:
+                sections.append(f"- {risk['risk']} (Level: {risk['level']})")
+                sections.append(f"  - Affected Resources: {', '.join(risk['affected_resources'])}")
+                sections.append(f"  - Mitigation: {risk['mitigation']}")
 
-### Recommendations
-- Essential pre-deployment validation steps
-- Recommended deployment approach and timing
-- Required monitoring during deployment
-- Rollback procedures and contingency plans
-- Team coordination requirements
+            return "\n".join(sections)
+        except Exception as e:
+            logger.error(f"Failed to format analysis result: {str(e)}")
+            raise
 
-### Impact Assessment
-- Operational impact on running systems and services
-- Financial implications including cost changes
-- End-user impact and service availability
-- Compliance and security posture changes
-- Integration points that may be affected
+    async def _call_ai(self, changes: str) -> str:
+        """Make a single AI call with the combined prompt."""
+        try:
+            return await self.provider.generate_completion(
+                prompt=self._get_combined_prompt(),
+                content=changes,
+                max_tokens=self.config.max_tokens,
+                temperature=self.config.temperature
+            )
+        except TimeoutError as e:
+            logger.error(f"AI call timed out: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"AI call failed: {str(e)}")
+            raise
 
-ANALYSIS REQUIREMENTS:
-- Use exact counts from the provided summary data
-- Focus on actionable and specific insights
-- Highlight breaking changes with clear warnings
-- Explain technical changes in business context
-- Prioritize information by criticality and urgency
-- Use consistent language for similar resource types
-- If no relevant information exists for a section, state "No significant items identified"
-- Always end each section with a brief summary statement
-
-Provide clear, deterministic analysis focusing on practical deployment considerations."""
-    
     @abstractmethod
     async def summarize(self, changes: List[ResourceChange]) -> str:
         """Summarize the changes using AI."""
@@ -139,87 +396,190 @@ Provide clear, deterministic analysis focusing on practical deployment considera
 class OpenAISummarizer(BaseSummarizer):
     """OpenAI-based summarizer."""
     
+    def _get_facts_prompt(self) -> str:
+        """Get prompt for facts analysis."""
+        return """You are a Terraform expert. Analyze the provided Terraform changes and extract key facts.
+IMPORTANT: You MUST return a valid JSON object with NO additional text. Here is the EXACT structure:
+
+{
+    "facts": [
+        {
+            "fact": "string",
+            "type": "create/update/delete",
+            "resource": "string",
+            "impact": "Low/Medium/High"
+        }
+    ]
+}
+
+Requirements:
+1. Be precise with numbers and avoid speculation
+2. Focus on concrete changes and their impacts
+3. Use consistent resource identifiers
+4. Assess impact based on resource importance and change type
+5. Return ONLY the JSON object, no other text"""
+
+    def _get_categories_prompt(self) -> str:
+        """Get prompt for categorization analysis."""
+        return """You are a Terraform expert. Categorize the provided Terraform changes and identify risks.
+IMPORTANT: You MUST return a valid JSON object with NO additional text. Here is the EXACT structure:
+
+{
+    "summary": {
+        "total_resources": number,
+        "changes_by_type": {
+            "create": number,
+            "update": number,
+            "delete": number
+        },
+        "impact_level": "Low/Medium/High",
+        "key_components": ["list", "of", "main", "components"]
+    },
+    "categories": {
+        "networking": [
+            {
+                "resource": "string",
+                "change": "string",
+                "impact": "Low/Medium/High"
+            }
+        ],
+        "compute": [...],
+        "storage": [...],
+        "security": [...],
+        "database": [...],
+        "monitoring": [...]
+    },
+    "risks": [
+        {
+            "risk": "string",
+            "level": "Low/Medium/High",
+            "affected_resources": ["list", "of", "resources"],
+            "mitigation": "string"
+        }
+    ]
+}
+
+Requirements:
+1. Be precise with numbers and avoid speculation
+2. Group changes by infrastructure category
+3. Identify specific risks and mitigation steps
+4. Return ONLY the JSON object, no other text"""
+
     async def summarize(self, changes: List[ResourceChange]) -> str:
         try:
-            from openai import AsyncOpenAI
-            
-            client = AsyncOpenAI(api_key=self.config.api_key)
+            # Prepare the changes data
             cleaned_changes = self._prepare_changes_for_analysis(changes)
             
-            response = await client.chat.completions.create(
-                model=self.config.model,
-                messages=[
-                    {"role": "system", "content": self._get_system_prompt()},
-                    {"role": "user", "content": f"Analyze these Terraform changes:\n\n{cleaned_changes}"}
-                ],
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature,
-                seed=42  # For more deterministic results
+            # Make separate API calls for different aspects of the analysis
+            facts_json = await self.provider.generate_completion(
+                prompt=self._get_facts_prompt(),
+                content=cleaned_changes,
+                max_tokens=1024,  # Smaller token limit for focused analysis
+                temperature=self.config.temperature
             )
             
-            return response.choices[0].message.content
+            categories_json = await self.provider.generate_completion(
+                prompt=self._get_categories_prompt(),
+                content=cleaned_changes,
+                max_tokens=1024,  # Smaller token limit for focused analysis
+                temperature=self.config.temperature
+            )
             
-        except ImportError:
-            raise ImportError("OpenAI package not installed. Install with: pip install openai")
+            # Parse and validate the responses
+            try:
+                facts_analysis = json.loads(facts_json)
+                categories_analysis = json.loads(categories_json)
+                
+                # Combine the analyses
+                analysis = {
+                    "summary": categories_analysis["summary"],
+                    "facts": facts_analysis["facts"],
+                    "categories": categories_analysis["categories"],
+                    "risks": categories_analysis["risks"]
+                }
+                
+                # Validate required fields
+                required_fields = ["summary", "facts", "categories", "risks"]
+                for field in required_fields:
+                    if field not in analysis:
+                        raise ValueError(f"Missing required field: {field}")
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse AI response as JSON: {str(e)}")
+                raise ValueError("Invalid JSON response from AI model")
+            
+            # Create analysis result
+            result = AnalysisResult(
+                summary=analysis["summary"],
+                facts=analysis["facts"],
+                categories=analysis["categories"],
+                risks=analysis["risks"]
+            )
+            
+            # Format the result
+            return self._format_analysis_result(result)
+            
         except Exception as e:
-            raise Exception(f"OpenAI summarization failed: {str(e)}")
+            logger.error(f"OpenAI summarization failed: {str(e)}")
+            raise
 
 class GeminiSummarizer(BaseSummarizer):
     """Google Gemini-based summarizer."""
     
     async def summarize(self, changes: List[ResourceChange]) -> str:
         try:
-            import google.generativeai as genai
-            
-            genai.configure(api_key=self.config.api_key)
-            model = genai.GenerativeModel(
-                self.config.model,
-                system_instruction=self._get_system_prompt()
-            )
             cleaned_changes = self._prepare_changes_for_analysis(changes)
             
-            response = await model.generate_content(
-                f"Analyze these Terraform changes:\n\n{cleaned_changes}",
-                generation_config={
-                    "max_output_tokens": self.config.max_tokens,
-                    "temperature": self.config.temperature,
-                    "candidate_count": 1  # For deterministic results
-                }
+            # Make a single API call for all analysis
+            analysis_json = await self._call_ai(cleaned_changes)
+            analysis = json.loads(analysis_json)
+            
+            # Create analysis result
+            result = AnalysisResult(
+                summary=analysis["summary"],
+                facts=analysis["facts"],
+                categories=analysis["categories"],
+                risks=analysis["risks"]
             )
             
-            return response.text
+            # Format the result
+            return self._format_analysis_result(result)
             
-        except ImportError:
-            raise ImportError("Google Generative AI package not installed. Install with: pip install google-generativeai")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse AI response as JSON: {str(e)}")
+            raise ValueError("Invalid JSON response from AI model")
         except Exception as e:
-            raise Exception(f"Gemini summarization failed: {str(e)}")
+            logger.error(f"Gemini summarization failed: {str(e)}")
+            raise
 
 class AnthropicSummarizer(BaseSummarizer):
     """Anthropic Claude-based summarizer."""
     
     async def summarize(self, changes: List[ResourceChange]) -> str:
         try:
-            from anthropic import AsyncAnthropic
-            
-            client = AsyncAnthropic(api_key=self.config.api_key)
             cleaned_changes = self._prepare_changes_for_analysis(changes)
             
-            response = await client.messages.create(
-                model=self.config.model,
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature,
-                system=self._get_system_prompt(),
-                messages=[
-                    {"role": "user", "content": f"Analyze these Terraform changes:\n\n{cleaned_changes}"}
-                ]
+            # Make a single API call for all analysis
+            analysis_json = await self._call_ai(cleaned_changes)
+            analysis = json.loads(analysis_json)
+            
+            # Create analysis result
+            result = AnalysisResult(
+                summary=analysis["summary"],
+                facts=analysis["facts"],
+                categories=analysis["categories"],
+                risks=analysis["risks"]
             )
             
-            return response.content[0].text
+            # Format the result
+            return self._format_analysis_result(result)
             
-        except ImportError:
-            raise ImportError("Anthropic package not installed. Install with: pip install anthropic")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse AI response as JSON: {str(e)}")
+            raise ValueError("Invalid JSON response from AI model")
         except Exception as e:
-            raise Exception(f"Anthropic summarization failed: {str(e)}")
+            logger.error(f"Anthropic summarization failed: {str(e)}")
+            raise
 
 def create_summarizer(config: SummarizerConfig) -> BaseSummarizer:
     """Factory function to create the appropriate summarizer."""
@@ -234,14 +594,14 @@ def create_summarizer(config: SummarizerConfig) -> BaseSummarizer:
     
     return providers[config.provider](config)
 
-# Usage example with deterministic configuration
 def create_deterministic_config(provider: str, model: str, api_key: str) -> SummarizerConfig:
     """Create a configuration optimized for deterministic results."""
     return SummarizerConfig(
         provider=provider,
         model=model,
         api_key=api_key,
-        max_tokens=1500,  # Increased for comprehensive analysis
+        max_tokens=2048,  # Set to 2048 for completion
         temperature=0.1,  # Low temperature for consistency
-        system_prompt=None  # Use the built-in deterministic prompt
+        system_prompt=None,  # Use the built-in deterministic prompt
+        timeout=60  # Standard timeout
     )
