@@ -23,6 +23,7 @@ class ResourceChange:
     module: str = 'root'  # Module path (e.g., 'root', 'network.vpc')
     before: Dict = None   # State before the change
     after: Dict = None    # State after the change
+    replace: List[str] = None  # Attributes enforcing resource replacement (if any)
 ```
 
 **Fields:**
@@ -32,7 +33,8 @@ class ResourceChange:
 - `changes`: List of changed attributes (may be empty)
 - `module`: Module path (default 'root')
 - `before`: Dictionary of the resource's state before the change
-- `after`: Dictionary of the resource's state after the change
+ - `after`: Dictionary of the resource's state after the change
+ - `replace`: List of attributes enforcing resource replacement (if any)
 
 ---
 

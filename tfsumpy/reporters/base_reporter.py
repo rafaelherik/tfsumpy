@@ -1,7 +1,16 @@
 from typing import TextIO
 import sys
 import os
-from colorama import Fore, Style, init
+try:
+    from colorama import Fore, Style, init
+except ImportError:
+    # Fallback if colorama is not installed
+    class _Dummy:
+        def __getattr__(self, name):
+            return ''
+    Fore = Style = _Dummy()
+    def init(*args, **kwargs):
+        pass
 
 class BaseReporter:
     """Base class for all reporters with common functionality."""

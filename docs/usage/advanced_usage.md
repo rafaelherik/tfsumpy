@@ -18,7 +18,27 @@ Template-based Markdown output with:
 - Summary statistics
 - Resource changes
 - Detailed attribute changes (if enabled)
-- Timestamp and metadata
++ Timestamp and metadata
+  
+## AI Analysis with Azure
+When Azure integration is enabled via the `--azure` flag, tfsumpy will retrieve Azure resource details before performing AI summarization.
+Ensure your Azure credentials (e.g., via Azure CLI login or environment variables) and subscription ID are configured.
+
+Example:
+```bash
+tfsumpy plan.json \
+  --output markdown \
+  --ai openai YOUR_API_KEY \
+  --azure
+```
+
+For JSON output with AI and Azure:
+```bash
+tfsumpy plan.json \
+  --output json \
+  --ai openai YOUR_API_KEY \
+  --azure
+```
 
 ### JSON Output
 ```bash
@@ -89,7 +109,7 @@ This enables:
 
 ### Deprecated Options
 The following options are deprecated and will be removed in a future version:
-- `--changes` → Use `--hide-changes=false` instead
+- `--changes`: (deprecated; attribute changes are shown by default)
 - `--details` → Use `--detailed` instead
 - `--markdown` → Use `--output markdown` instead
 
@@ -98,19 +118,20 @@ The following options are deprecated and will be removed in a future version:
 - `--plugin-dir`: Directory to load plugins from
 - `--debug`: Enable debug logging
 
-## Markdown Output (Beta)
+## Markdown Output
 
-You can generate a Markdown summary of your Terraform plan with:
+Generate a Markdown summary of your Terraform plan with:
 
 ```bash
-tfsumpy plan.json --markdown > plan_summary.md
+tfsumpy plan.json --output markdown > plan_summary.md
 ```
 
-This will create a Markdown file with:
-- A summary section
-- Sections for created, updated, and destroyed resources
-- JSON code blocks for each resource change
+You can further control the content with:
+- `--detailed`: Show detailed resource information and attribute changes
+- `--hide-changes`: Hide detailed attribute changes
 
-For updates, both before and after states are shown. For creates and deletes, only the relevant state is shown.
-
-> **Note:** Markdown output is a beta feature. Please report any issues or suggestions! 
+The generated Markdown includes:
+- Summary statistics
+- Resource changes formatted as HCL code blocks
+- Replacement enforcement attributes (for recreate operations)
+- Timestamp and metadata

@@ -34,11 +34,18 @@ tfsumpy [OPTIONS] PLAN_FILE
 - `--ai-temperature N`: Control response creativity (0.0-1.0)
 - `--ai-system-prompt PROMPT`: Custom system prompt
 
+### Azure Integration Options
+
+- `--azure`: Enable Azure integration for AI analysis (requires Azure credentials)
+- `--azure-subscription-id`: Azure Subscription ID for resource queries (default from AZURE_SUBSCRIPTION_ID env var)
+- `--azure-resource-groups`: List of Azure resource group names to filter (default: all)
+- `--azure-include-resources`: Include Azure resources information for analysis
+
 ### Deprecated Options
 
 > **Warning**: These options are deprecated and will be removed in a future version.
 
-- `--changes`: Use `--hide-changes=false` instead
+- `--changes`: (deprecated; attribute changes are shown by default)
 - `--details`: Use `--detailed` instead
 - `--markdown`: Use `--output markdown` instead
 

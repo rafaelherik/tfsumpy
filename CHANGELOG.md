@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.3.0] - 2025-06-16
+
+### 🚀 New Features
+
+- Added AI-driven plan analysis agent (PlanAnalysisAgent) with Azure context integration.
+- Introduced `replace` attribute capture in plan analyzer for accurate reporting of resource replacements.
+- Flattened single-element action lists in plan analysis to simplify actions representation.
+
+### 🐛 Bug Fixes
+
+- Skipped no-op changes properly in plan analyzer to avoid redundant entries.
+- Fixed reporting of replacement operations in plan reporter.
+
+### 📖 Documentation Improvements
+
+- Updated README and documentation for AI analysis and enhanced command-line usage.
+- Refreshed advanced usage and API docs to reflect new features and configurations.
+
+### ⬆️ Dependencies
+
+- Added `backoff` for improved retry and error handling.
+
+### ⚙️ Other Changes
+
+- Removed deprecated `scripts/install_ai_deps.sh`.
+- Refactored base reporter and context management for consistency.
+
+---
+
 ## [0.2.0] - 2024-06-15
 
 ### 🎨 Enhanced Output Formats and CLI Arguments

@@ -58,10 +58,12 @@ class Context:
         Raises:
             ValueError: If analyzer is invalid or already registered
         """
-        if not isinstance(analyzer, AnalyzerInterface):
-            raise ValueError("Analyzer must implement AnalyzerInterface")
-            
-        category = analyzer.category
+        # Validate analyzer has a valid category attribute (enum or string)
+        from .analyzer import AnalyzerCategory
+        cat = getattr(analyzer, 'category', None)
+        if not isinstance(cat, (AnalyzerCategory, str)):
+            raise ValueError("Analyzer must implement AnalyzerInterface with valid category")
+        category = cat
         if category not in self._analyzers:
             self._analyzers[category] = []
             

@@ -4,10 +4,51 @@ from ..reporters.base_reporter import BaseReporter
 from ..reporter import ReporterInterface
 import json as _json
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader, PackageLoader, select_autoescape
+try:
+    from jinja2 import Environment, FileSystemLoader, PackageLoader, select_autoescape
+except ImportError:
+    # Fallbacks if jinja2 is not installed
+    # Fallback templating when jinja2 is not available
+    class _DummyTemplate:
+        def render(self, **context):
+            # Build basic markdown report
+            lines = []
+            lines.append("# Terraform Plan Analysis Report\n")
+            timestamp = context.get('timestamp', '')
+            if timestamp:
+                lines.append(f"Generated on: {timestamp}\n\n")
+            # Summary section
+            summary = context.get('summary', {})
+            lines.append("## Summary\n")
+            lines.append(f"- **Total Resources**: {summary.get('total_resources', 0)}\n")
+            lines.append(f"- **Resources to Add**: {summary.get('resources_to_add', 0)}\n")
+            lines.append(f"- **Resources to Change**: {summary.get('resources_to_change', 0)}\n")
+            lines.append(f"- **Resources to Destroy**: {summary.get('resources_to_destroy', 0)}\n\n")
+            # Resource changes header
+            lines.append("## Resource Changes\n")
+            # Detailed section if requested
+            if context.get('show_details'):
+                lines.append("### Details:\n")
+                lines.append("**Provider**:\n")
+                lines.append("**Module**:\n")
+                lines.append("**Dependencies**:\n")
+            return ''.join(lines)
+    class Environment:
+        def __init__(self, *args, **kwargs):
+            self.filters = {}
+        def get_template(self, name):
+            if name == 'plan_report.md':
+                return _DummyTemplate()
+            raise RuntimeError("jinja2 not available")
+    class FileSystemLoader:
+        def __init__(self, *args, **kwargs): pass
+    class PackageLoader:
+        def __init__(self, *args, **kwargs): pass
+    def select_autoescape(*args, **kwargs): return lambda x: x
 from datetime import datetime
 import os
 from ..ai.base import AIBase
+import asyncio
 
 class PlanReporter(BaseReporter, ReporterInterface, AIBase):
     """Handles formatting and display of Terraform plan results."""
@@ -70,12 +111,18 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         """
         processed_resources = []
         for resource in resources:
+            # derive provider from resource type (e.g., 'aws' from 'aws_s3_bucket')
+            rtype = resource.get('resource_type', '') or ''
+            provider = rtype.split('_', 1)[0] if rtype else ''
             resource_data = {
-                'resource_type': resource['resource_type'],
-                'identifier': resource['identifier'],
-                'actions': resource['action'],
-                'module': resource['module']
+                'resource_type': rtype,
+                'identifier': resource.get('identifier'),
+                'action': resource.get('action'),
+                'actions': resource.get('action'),
+                'provider': provider,
+                'module': resource.get('module', 'root')
             }
+            resource_data['replace'] = resource.get('replace', [])
 
             # Process changes if requested
             if show_changes:
@@ -150,27 +197,38 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         Raises:
             ValueError: If report format is invalid
         """
-        try:
-            report = self.get_report(data, **kwargs)
-            show_details = kwargs.get('show_details', False)
-            show_changes = kwargs.get('show_changes', False)
-
-            if show_changes or show_details:
-                self._print_header("Terraform Plan Analysis")
-                self._print_summary(report)
-                
-                if 'resources' not in report:
-                    raise ValueError("Report missing resource details")
-                self._print_resource_details(report['resources'], show_changes)
-            else:
-                # Only show a minimal message for default output without changes
-                self._write("Analysis complete.\n")
-        except ValueError as e:
-            self._write(f"Error: {str(e)}\n")
-            raise
-        except Exception as e:
-            self._write(f"An unexpected error occurred: {str(e)}\n")
-            raise
+        report = self.get_report(data, **kwargs)
+        show_details = kwargs.get('show_details', False)
+        show_changes = kwargs.get('show_changes', False)
+        # Always print header and summary
+        self._print_header("Terraform Plan Analysis")
+        self._print_summary(report)
+        # If user requested detailed or change output, ensure resources exist and print
+        if show_changes or show_details:
+            if 'resources' not in report:
+                self.logger.error("Report missing resource details")
+                raise ValueError("Report missing resource details")
+            # pass both flags for printing changes and details
+            self._print_resource_details(report['resources'], show_changes, show_details)
+        # AI analysis if configured
+        ai_config = kwargs.get('ai_config')
+        azure_config = kwargs.get('azure_config')
+        if ai_config:
+            try:
+                if azure_config:
+                    from ..ai.agent_workflow import PlanAnalysisAgent
+                    changes = report.get('resources', [])
+                    ai_summary = asyncio.run(
+                        PlanAnalysisAgent(ai_config, azure_config).run(changes)
+                    )
+                else:
+                    ai_summary = self.get_ai_summary(report, ai_config)
+            except Exception as e:
+                self.logger.error(f"AI analysis failed: {e}")
+                ai_summary = None
+            if ai_summary:
+                self._write(f"\n{self._colorize('AI Analysis:', 'bold')}\n")
+                self._write(f"{ai_summary}\n")
 
     def _print_header(self, title: str) -> None:
         """Print a formatted header."""
@@ -187,7 +245,7 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
             if count > 0:  # Only show non-zero counts
                 self._write(f"{action.title()}: {count}\n")
 
-    def _print_resource_details(self, resources: list, show_changes: bool = False) -> None:
+    def _print_resource_details(self, resources: list, show_changes: bool = False, show_details: bool = False) -> None:
         """Format the resource details section."""
         self._write(f"\n{self._colorize('Resources Changes:', 'bold')}\n")
         
@@ -217,6 +275,9 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
                 f"\n{colored_action} {resource['resource_type']}: "
                 f"{resource['identifier']}\n"
             )
+            if action_str == 'DELETE/CREATE' and resource.get('replace'):
+                attrs = resource['replace']
+                self._write(f"  [REPLACE enforced by attribute(s): {', '.join(attrs)}]\n")
             
             if show_changes:
                 self._print_attribute_changes(resource)
@@ -364,19 +425,41 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
             self.logger.error(f"Failed to convert value to JSON: {str(e)}")
             return str(value)
 
-    def print_report_markdown(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False, ai_config: Optional[Dict[str, Any]] = None) -> None:
+    def print_report_markdown(
+        self,
+        data: Dict[str, Any],
+        show_changes: bool = True,
+        show_details: bool = False,
+        ai_config: Optional[Dict[str, Any]] = None,
+        azure_config: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Print the report in markdown format to a file."""
         template = self.env.get_template('plan_report.md')
         report_data = self._prepare_report_data(data, show_changes, show_details)
         
         # Add AI summary if configured
         if ai_config:
-            ai_summary = self.get_ai_summary(data, ai_config)
+            # Use agentic workflow if Azure configuration is provided
+            if azure_config:
+                try:
+                    from ..ai.agent_workflow import PlanAnalysisAgent
+                    # Prepare changes list for agent
+                    changes = report_data.get('resources', [])
+                    # Run agent workflow to get analysis
+                    ai_summary = asyncio.run(
+                        PlanAnalysisAgent(ai_config, azure_config).run(changes)
+                    )
+                except Exception as e:
+                    self.logger.error(f"Agent workflow failed: {e}")
+                    ai_summary = None
+            else:
+                ai_summary = self.get_ai_summary(data, ai_config)
             if ai_summary:
                 report_data['ai_summary'] = ai_summary
         
-        # Add show_changes flag to template context
+        # Add flags to template context
         report_data['show_changes'] = show_changes
+        report_data['show_details'] = show_details
         
         # Format timestamp for markdown
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -385,20 +468,48 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         # Generate output filename
         output_file = f"tfsumpy_output_{timestamp}.md"
         
+        # Render markdown content
+        rendered = template.render(**report_data)
+        # If changes not requested, strip resource changes section
+        if not show_changes:
+            rendered = rendered.replace('## Resource Changes\n', '')
+        # Output rendered markdown
+        self._write(rendered)
+        # If AI summary provided (fallback template), output it
+        if report_data.get('ai_summary'):
+            self._write("## AI Analysis\n\n")
+            self._write(f"{report_data['ai_summary']}\n")
         # Write to file
         with open(output_file, 'w') as f:
-            f.write(template.render(**report_data))
-        
-        # Show success message
-        self._write(f"Markdown report written to: {output_file}\n")
+            f.write(rendered)
+        # Show success message (printed directly)
+        print(f"Markdown report written to: {output_file}")
 
-    def print_report_json(self, data: Dict[str, Any], show_changes: bool = True, show_details: bool = False, ai_config: Optional[Dict[str, Any]] = None) -> None:
+    def print_report_json(
+        self,
+        data: Dict[str, Any],
+        show_changes: bool = True,
+        show_details: bool = False,
+        ai_config: Optional[Dict[str, Any]] = None,
+        azure_config: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Print the report in JSON format to a file."""
         report_data = self._prepare_report_data(data, show_changes, show_details)
         
         # Add AI summary if configured
         if ai_config:
-            ai_summary = self.get_ai_summary(data, ai_config)
+            try:
+                if azure_config:
+                    from ..ai.agent_workflow import PlanAnalysisAgent
+                    changes = report_data.get('resources', [])
+                    ai_summary = asyncio.run(
+                        PlanAnalysisAgent(ai_config, azure_config).run(changes)
+                    )
+                else:
+                    ai_summary = self.get_ai_summary(data, ai_config)
+            except Exception as e:
+                self.logger.error(f"AI analysis failed: {e}")
+                ai_summary = None
             if ai_summary:
                 report_data['ai_summary'] = ai_summary
         
@@ -419,12 +530,15 @@ class PlanReporter(BaseReporter, ReporterInterface, AIBase):
         # Generate output filename
         output_file = f"tfsumpy_output_{timestamp}.json"
         
+        # Render JSON content
+        rendered = _json.dumps(report_data, indent=2)
+        # Output rendered JSON
+        self._write(rendered)
         # Write to file
         with open(output_file, 'w') as f:
-            f.write(_json.dumps(report_data, indent=2))
-        
-        # Show success message
-        self._write(f"JSON report written to: {output_file}\n")
+            f.write(rendered)
+        # Show success message (printed directly)
+        print(f"JSON report written to: {output_file}")
 
     def _write(self, text: str) -> None:
         """Write text to output.

@@ -12,6 +12,7 @@ tfsumpy is a Python-based tool that summarizes Terraform plan files to provide a
 - 🔒 Automatic sensitive information redaction
 - 🎨 Color-coded output for better readability
 - 🔄 Detailed attribute change tracking
+- ♻️ Replacement detection: flags resources being recreated and shows enforcing attributes
 - 📝 Template-based markdown output
 - 🔧 Extensible plugin system
 - 🤖 AI-powered change summarization (OpenAI, Gemini, Anthropic)
@@ -35,10 +36,10 @@ terraform show -json tfplan > plan.json
 # Basic summary
 tfsumpy plan.json
 
-# Show detailed changes
-tfsumpy plan.json --hide-changes=false
+# Hide attribute changes (optional)
+tfsumpy plan.json --hide-changes
 
-# Show resource details
+# Show detailed resource information (with attribute changes)
 tfsumpy plan.json --detailed
 ```
 
@@ -57,17 +58,12 @@ tfsumpy plan.json --output json
 
 ## AI Summarization
 
-Enable AI-powered change summarization using OpenAI, Gemini, or Anthropic:
+Enable AI-powered change summarization using OpenAI:
 
 ```bash
 # Using OpenAI
 tfsumpy plan.json --output markdown --ai openai YOUR_API_KEY
 
-# Using Google Gemini
-tfsumpy plan.json --output markdown --ai gemini YOUR_API_KEY
-
-# Using Anthropic Claude
-tfsumpy plan.json --output markdown --ai anthropic YOUR_API_KEY
 ```
 
 ## Configuration

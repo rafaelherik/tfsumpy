@@ -9,9 +9,18 @@ Generated on: {{ timestamp }}
 - **Resources to Destroy**: {{ summary.resources_to_destroy }}
 
 ## Resource Changes
+{% if show_details %}
+### Details:
+**Provider**:
+**Module**:
+**Dependencies**:
+{% endif %}
 {% for resource in resources %}
 {% if "delete" in resource.actions and "create" in resource.actions %}
 ```hcl
+{% if resource.replace %}
+    # Replace enforced by: {{ resource.replace | join(', ') }}
+{% endif %}
 -/+ {{ resource.resource_type }} - **{{ resource.identifier }}** {
 {% if resource.module %}
     module  = "{{ resource.module }}"

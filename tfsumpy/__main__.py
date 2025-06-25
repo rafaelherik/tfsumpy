@@ -157,9 +157,33 @@ def main():
                                 help='[DEPRECATED] Output the summary in markdown format. Use --output markdown instead.')
     
     # Plugin directory
-    parser.add_argument('--plugin-dir', 
-                       default=os.getenv('TFSUMPY_PLUGIN_DIR', 'plugins'),
-                       help='Directory to load plugins from (default: plugins or TFSUMPY_PLUGIN_DIR env var)')
+    parser.add_argument(
+        '--plugin-dir',
+        default=os.getenv('TFSUMPY_PLUGIN_DIR', 'plugins'),
+        help='Directory to load plugins from (default: plugins or TFSUMPY_PLUGIN_DIR env var)'
+    )
+    # Azure integration options
+    azure_group = parser.add_argument_group('Azure Integration Options')
+    azure_group.add_argument(
+        '--azure',
+        action='store_true',
+        help='Enable Azure integration for AI analysis (requires azure-subscription-id)'
+    )
+    azure_group.add_argument(
+        '--azure-subscription-id',
+        help='Azure Subscription ID for Azure integration',
+        default=os.getenv('AZURE_SUBSCRIPTION_ID')
+    )
+    azure_group.add_argument(
+        '--azure-resource-groups',
+        nargs='*',
+        help='Azure resource group names to retrieve info for (default: all)'
+    )
+    azure_group.add_argument(
+        '--azure-include-resources',
+        action='store_true',
+        help='Include Azure resources information for analysis'
+    )
     
     args = parser.parse_args()
     
@@ -205,28 +229,48 @@ def main():
         
         # Get AI configuration
         ai_config = get_ai_config(args)
+        # Azure integration configuration for AI analysis
+        azure_config = None
+        if args.azure:
+            # Ensure subscription ID is provided
+            if not args.azure_subscription_id:
+                raise ValidationError(
+                    "--azure requires --azure-subscription-id or AZURE_SUBSCRIPTION_ID env var"
+                )
+            azure_config = {
+                'subscription_id': args.azure_subscription_id,
+                'filter_resource_groups': args.azure_resource_groups or [],
+                'include_resources': args.azure_include_resources
+            }
         
         # Handle different output formats
         if output_format == 'markdown':
-            plan_reporter.print_report_markdown(plan_results[0].data,
-                                              show_changes=not args.hide_changes,
-                                              show_details=args.detailed or args.details,
-                                              ai_config=ai_config)
+            plan_reporter.print_report_markdown(
+                plan_results[0].data,
+                show_changes=not args.hide_changes,
+                show_details=args.detailed or args.details,
+                ai_config=ai_config,
+                azure_config=azure_config
+            )
         elif output_format == 'json':
-            if ai_config:
-                warnings.warn("AI analysis is only supported with markdown output format. Use --output markdown to see the AI analysis.", 
-                            UserWarning, stacklevel=2)
-            plan_reporter.print_report_json(plan_results[0].data,
-                                          show_changes=not args.hide_changes,
-                                          show_details=args.detailed or args.details,
-                                          ai_config=None)  # Force ai_config to None for non-markdown formats
-        else:  # default output
-            if ai_config:
-                warnings.warn("AI analysis is only supported with markdown output format. Use --output markdown to see the AI analysis.", 
-                            UserWarning, stacklevel=2)
-            context.run_reports("plan", plan_results[0].data,
-                              show_changes=not args.hide_changes,
-                              show_details=args.detailed or args.details)
+            # JSON output with optional AI and Azure analysis
+            plan_reporter.print_report_json(
+                plan_results[0].data,
+                show_changes=not args.hide_changes,
+                show_details=args.detailed or args.details,
+                ai_config=ai_config,
+                azure_config=azure_config
+            )
+        else:  # default console output
+            # Console output with optional AI analysis
+            context.run_reports(
+                "plan",
+                plan_results[0].data,
+                show_changes=not args.hide_changes,
+                show_details=args.detailed or args.details,
+                ai_config=ai_config,
+                azure_config=azure_config
+            )
         
         # Store plan data for other analyzers
         context.set_plan_data(plan_results[0].data)

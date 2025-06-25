@@ -96,26 +96,31 @@ class PlanAnalyzer(AnalyzerInterface):
         
         for change in resource_changes:
             # Extract change actions
-            actions = change.get('change', {}).get('actions', ['no-op'])
-            if 'no-op' not in actions:
-                self.logger.debug(f"Processing {actions} change for {change.get('address', '')}")
-                
-                # Extract module information
-                address = change.get('address', '')
-                module_name = self._extract_module_name(address)
-                
-                # Get change details
-                change_details = change.get('change', {})
-                
-                changes.append(ResourceChange(
-                    action=actions,  # Pass the full actions list
-                    resource_type=change.get('type', ''),
-                    identifier=self._sanitize_text(address),
-                    changes=change_details.get('before_sensitive', {}),
-                    module=module_name,
-                    before=change_details.get('before', {}),
-                    after=change_details.get('after', {})
-                ))
+            raw_actions = change.get('change', {}).get('actions', ['no-op'])
+            # Skip no-op changes
+            if raw_actions == ['no-op']:
+                continue
+            # Flatten single-element action lists
+            action = raw_actions[0] if isinstance(raw_actions, list) and len(raw_actions) == 1 else raw_actions
+            self.logger.debug(f"Processing {raw_actions} change for {change.get('address', '')}")
+            # Extract module information
+            address = change.get('address', '')
+            module_name = self._extract_module_name(address)
+            # Get change details
+            change_details = change.get('change', {})
+            # Create ResourceChange with flattened action
+            rc = ResourceChange(
+                action=action,
+                resource_type=change.get('type', ''),
+                identifier=self._sanitize_text(address),
+                changes=change_details.get('before_sensitive', {}),
+                module=module_name,
+                before=change_details.get('before', {}),
+                after=change_details.get('after', {})
+            )
+            replace_attrs = change_details.get('replace') or []
+            rc.replace = replace_attrs
+            changes.append(rc)
         
         return changes
 

@@ -48,20 +48,32 @@ from tfsumpy.plan.reporter import PlanReporter
 
 reporter = PlanReporter()
 
-# Console output
-reporter.print_report(plan_results, show_changes=True)
+# Console output (with optional AI and Azure integration)
+reporter.print_report(
+    plan_results,
+    show_changes=True,
+    ai_config=ai_config,      # AI settings dict or None
+    azure_config=azure_config  # Azure integration settings dict or None
+)
 
 # Markdown output
 reporter.print_report_markdown(plan_results, show_changes=True)
 
-# JSON output
-reporter.print_report_json(plan_results, show_changes=True)
+# JSON output (with optional AI and Azure integration)
+reporter.print_report_json(
+    plan_results,
+    show_changes=True,
+    ai_config=ai_config,
+    azure_config=azure_config
+)
 ```
 
 **Parameters:**
 - `data`: The analysis results (from `PlanAnalyzer`)
 - `show_changes`: Show detailed attribute changes (bool)
 - `show_details`: Show full resource details (bool)
+- `ai_config`: Optional AI configuration dict for summarization
+- `azure_config`: Optional Azure integration configuration dict for AI enrichment
 
 **Output Formats:**
 

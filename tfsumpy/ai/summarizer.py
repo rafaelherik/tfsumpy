@@ -6,7 +6,20 @@ import logging
 import asyncio
 from dataclasses import dataclass
 from ..models import ResourceChange
-import backoff
+try:
+    import backoff
+except ImportError:
+    # Fallback dummy backoff for environments without backoff package
+    class _DummyBackoff:
+        # Dummy attributes for compatibility
+        expo = None
+        full_jitter = None
+        @staticmethod
+        def on_exception(*args, **kwargs):
+            def decorator(func):
+                return func
+            return decorator
+    backoff = _DummyBackoff()
 
 try:
     from openai import AsyncOpenAI
