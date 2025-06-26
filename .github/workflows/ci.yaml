@@ -27,6 +27,9 @@ jobs:
         pip install poetry twine
         poetry install --with dev
         
+    - name: Lint with Ruff
+      run: poetry run ruff check .
+        
     - name: Run tests with coverage
       run: |
         poetry run pytest --cov=tfsumpy --cov-report=term
