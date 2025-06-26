@@ -1,5 +1,9 @@
 # tfsumpy - Terraform Plan Summary Tool
 
+![image](https://github.com/user-attachments/assets/d6e451e9-21db-487a-b15b-6d245e5a50bf)
+
+
+
 [![CI](https://github.com/rafaelherik/tfsumpy/actions/workflows/ci.yaml/badge.svg)](https://github.com/rafaelherik/tfsumpy/actions/workflows/ci.yaml)
 [![PyPI](https://img.shields.io/pypi/v/tfsumpy.svg)](https://pypi.org/project/tfsumpy/)
 
