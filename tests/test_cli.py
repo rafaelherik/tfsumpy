@@ -1,4 +1,5 @@
-import subprocess, sys, json
+import subprocess
+import sys
 
 def test_cli_smoke():
     result = subprocess.run(
