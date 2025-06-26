@@ -32,3 +32,9 @@ tasks:
     cmds:
       - . .venv/bin/activate && python -m build
     deps: [install] 
+
+  run-check:
+    desc: Run all checks (install, lint, test)
+    cmds:    
+      - poetry run ruff check .
+    deps: [install]
