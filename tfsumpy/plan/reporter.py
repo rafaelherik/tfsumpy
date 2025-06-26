@@ -4,48 +4,8 @@ from ..reporters.base_reporter import BaseReporter
 from ..reporter import ReporterInterface
 import json as _json
 from pathlib import Path
-try:
-    from jinja2 import Environment, FileSystemLoader, PackageLoader, select_autoescape
-except ImportError:
-    # Fallbacks if jinja2 is not installed
-    # Fallback templating when jinja2 is not available
-    class _DummyTemplate:
-        def render(self, **context):
-            # Build basic markdown report
-            lines = []
-            lines.append("# Terraform Plan Analysis Report\n")
-            timestamp = context.get('timestamp', '')
-            if timestamp:
-                lines.append(f"Generated on: {timestamp}\n\n")
-            # Summary section
-            summary = context.get('summary', {})
-            lines.append("## Summary\n")
-            lines.append(f"- **Total Resources**: {summary.get('total_resources', 0)}\n")
-            lines.append(f"- **Resources to Add**: {summary.get('resources_to_add', 0)}\n")
-            lines.append(f"- **Resources to Change**: {summary.get('resources_to_change', 0)}\n")
-            lines.append(f"- **Resources to Destroy**: {summary.get('resources_to_destroy', 0)}\n\n")
-            # Resource changes header
-            lines.append("## Resource Changes\n")
-            # Detailed section if requested
-            if context.get('show_details'):
-                lines.append("### Details:\n")
-                lines.append("**Provider**:\n")
-                lines.append("**Module**:\n")
-                lines.append("**Dependencies**:\n")
-            return ''.join(lines)
-    class Environment:
-        def __init__(self, *args, **kwargs):
-            self.filters = {}
-        def get_template(self, name):
-            if name == 'plan_report.md':
-                return _DummyTemplate()
-            raise RuntimeError("jinja2 not available")
-    class FileSystemLoader:
-        def __init__(self, *args, **kwargs): pass
-    class PackageLoader:
-        def __init__(self, *args, **kwargs): pass
-    def select_autoescape(*args, **kwargs): return lambda x: x
 from datetime import datetime
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 import os
 from ..ai.base import AIBase
 import asyncio
