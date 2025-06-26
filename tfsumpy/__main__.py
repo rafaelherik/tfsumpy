@@ -1,7 +1,6 @@
 import logging
 import argparse
 import warnings
-from pathlib import Path
 from .plan.analyzer import PlanAnalyzer
 from .plan.reporter import PlanReporter
 from .context import Context

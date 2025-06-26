@@ -1,14 +1,14 @@
 import json
 import logging
 import os
-from typing import Dict, List, Type, Any
+from typing import Dict, List, Any, Optional
 from .analyzer import AnalyzerInterface, AnalyzerResult
 from .reporter import ReporterInterface
 
 class Context:
     """Application context that manages analyzers and configuration."""
     
-    def __init__(self, config_path: str = None, debug: bool = False):
+    def __init__(self, config_path: Optional[str] = None, debug: bool = False):
         self.config_path = config_path
         self.debug = debug
         
@@ -21,13 +21,13 @@ class Context:
         )
         
         # Initialize components
-        self.sensitive_patterns = []
-        self.config = {}
+        self.sensitive_patterns: List[tuple[str, str]] = []
+        self.config: Dict[str, Any] = {}
         
         # Initialize analyzer registry
         self._analyzers: Dict[str, List[AnalyzerInterface]] = {}
         self._reporters: Dict[str, List[ReporterInterface]] = {}
-        self.plan_data = None
+        self.plan_data: Optional[Dict[str, Any]] = None
 
     def register_analyzer(self, analyzer: AnalyzerInterface) -> None:
         """Register an analyzer in its category.
@@ -90,7 +90,7 @@ class Context:
         """
         self.plan_data = plan_data
     
-    def get_plan_data(self) -> Dict:
+    def get_plan_data(self) -> Optional[Dict[str, Any]]:
         """Retrieve stored plan data.
         
         Returns:
@@ -122,6 +122,7 @@ class Context:
         """Merge external configuration with default configuration"""
         self.logger.debug(f"Merging external config file: {self.config_path}")
         try:
+            assert self.config_path is not None
             with open(self.config_path, 'r') as f:
                 external_config = json.load(f)
                 

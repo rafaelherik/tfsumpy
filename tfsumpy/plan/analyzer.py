@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 import json
 import logging
-from typing import Dict, List
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..context import Context
 from ..resource import ResourceChange
 from ..analyzer import AnalyzerInterface, AnalyzerResult
 

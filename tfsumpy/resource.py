@@ -1,23 +1,14 @@
-from dataclasses import dataclass
-from typing import List, Dict
+from dataclasses import dataclass, field
+from typing import Dict, Any
 
 @dataclass
 class ResourceChange:
+    """Represents a single Terraform resource change."""
+
     action: str
     resource_type: str
     identifier: str
-    changes: List[str]
-    module: str = 'root'
-    before: dict = None
-    after: dict = None
-
-    def __init__(self, action: str, resource_type: str, identifier: str, 
-                 changes: dict, module: str = 'root', before: dict = None, 
-                 after: dict = None):
-        self.action = action
-        self.resource_type = resource_type
-        self.identifier = identifier
-        self.changes = changes
-        self.module = module
-        self.before = before or {}
-        self.after = after or {}
+    changes: Dict[str, Any] = field(default_factory=dict)
+    module: str = "root"
+    before: Dict[str, Any] = field(default_factory=dict)
+    after: Dict[str, Any] = field(default_factory=dict)
