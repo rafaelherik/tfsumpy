@@ -1,9 +1,8 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from tfsumpy.plan.reporter import PlanReporter
 import re
 import json
-from datetime import datetime
 
 @pytest.fixture
 def reporter():
