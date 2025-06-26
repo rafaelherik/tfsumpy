@@ -12,3 +12,5 @@ class ResourceChange:
     module: str = "root"
     before: Dict[str, Any] = field(default_factory=dict)
     after: Dict[str, Any] = field(default_factory=dict)
+    replacement: bool = False
+    replacement_triggers: list = field(default_factory=list)

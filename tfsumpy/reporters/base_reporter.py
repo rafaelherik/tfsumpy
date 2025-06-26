@@ -14,6 +14,7 @@ class BaseReporter:
         'green': Fore.GREEN,
         'blue': Fore.BLUE,
         'red': Fore.RED,
+        'yellow': Fore.YELLOW,
         'reset': Style.RESET_ALL,
         'bold': Style.BRIGHT
     }

@@ -55,7 +55,14 @@ class PlanAnalyzer(AnalyzerInterface):
             # Generate summary statistics
             change_counts = {'create': 0, 'update': 0, 'delete': 0}
             for change in changes:
-                change_counts[change.action] += 1
+                # For reporting, treat 'replace' as both a delete and a create
+                if change.action == 'replace':
+                    change_counts['delete'] += 1
+                    change_counts['create'] += 1
+                elif change.action in change_counts:
+                    change_counts[change.action] += 1
+                else:
+                    change_counts[change.action] = 1  # fallback for unexpected actions
             
             self.logger.info(f"Found {len(changes)} resource changes")
             self.logger.debug(f"Change breakdown: {change_counts}")
@@ -97,9 +104,10 @@ class PlanAnalyzer(AnalyzerInterface):
         
         for change in resource_changes:
             # Extract change action
-            action = change.get('change', {}).get('actions', ['no-op'])[0]
+            actions = change.get('change', {}).get('actions', ['no-op'])
+            action = actions[0] if actions else 'no-op'
             if action != 'no-op':
-                self.logger.debug(f"Processing {action} change for {change.get('address', '')}")
+                self.logger.debug(f"Processing {actions} change for {change.get('address', '')}")
                 
                 # Extract module information
                 address = change.get('address', '')
@@ -108,14 +116,22 @@ class PlanAnalyzer(AnalyzerInterface):
                 # Get change details
                 change_details = change.get('change', {})
                 
+                # Detect replacement (Terraform: actions == ["delete", "create"])
+                is_replacement = actions == ["delete", "create"]
+                replacement_triggers = change_details.get('replacement_triggered_by', []) if is_replacement else []
+                # For reporting, treat as 'replace' action
+                action_display = 'replace' if is_replacement else action
+                
                 changes.append(ResourceChange(
-                    action=action,
+                    action=action_display,
                     resource_type=change.get('type', ''),
                     identifier=self._sanitize_text(address),
                     changes=change_details.get('before_sensitive', {}),
                     module=module_name,
                     before=change_details.get('before', {}),
-                    after=change_details.get('after', {})
+                    after=change_details.get('after', {}),
+                    replacement=is_replacement,
+                    replacement_triggers=replacement_triggers
                 ))
         
         return changes

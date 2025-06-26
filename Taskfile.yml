@@ -17,7 +17,7 @@ tasks:
   test:
     desc: Run all tests with pytest
     cmds:
-      - . .venv/bin/activate && pytest
+      - . .venv/bin/activate && poetry run pytest --cov=tfsumpy --cov-report=term && poetry run coverage report --fail-under=75
     deps: [install]
 
   lint:

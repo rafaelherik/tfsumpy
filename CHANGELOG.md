@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1] - 2025-06-26
+
+### 🛠 Enhancements
+
+- Integrated Bandit security scanning into CI pipelines and resolved initial issues.
+- Added Ruff support to the Taskfile for consistent code linting and fixed the CLI smoke test failure.
+- Introduced a smoke test for the CLI to catch regressions early.
+- Added a link to the Discord community server for real-time support and discussion.
+
+### 🐛 Bug Fixes
+
+- Fixed handling of Terraform resources with a replace action so that the analyzer and reporter treat it uniquely.
+
+---
+
 ## [0.2.0] - 2024-06-15
 
 ### 🎨 Enhanced Output Formats and CLI Arguments
