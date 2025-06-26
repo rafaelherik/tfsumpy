@@ -17,6 +17,7 @@ class PlanReporter(BaseReporter, ReporterInterface):
         # Initialize Jinja2 environment
         template_dir = Path(__file__).parent.parent / 'templates'
         self.env = Environment(
+            autoescape=True,
             loader=FileSystemLoader(str(template_dir)),
             trim_blocks=True,
             lstrip_blocks=True
