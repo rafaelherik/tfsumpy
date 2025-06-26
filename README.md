@@ -5,6 +5,8 @@
 
 tfsumpy is a Python-based tool that summarizes Terraform plan files to provide a clear overview of infrastructure changes. It helps DevOps teams review infrastructure changes more effectively by providing detailed plan summaries in different formats.
 
+![Discord Server](https://discord.gg/9mw8nXyr)
+
 ## Features
 
 - 🔍 Detailed plan analysis with change breakdown
