@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Extending tfsumpy - tfsumpy Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Extending tfsumpy";
+        var mkdocs_page_input_path = "extending.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> tfsumpy Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/advanced_usage/">Advanced Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/configuration/">Configuration</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Features</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../features/plan_analysis/">Plan Analysis</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../api/analyzers/">Analyzers</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/reporters/">Reporters</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/models/">Models</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Extending tfsumpy</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#custom-analyzers">Custom Analyzers</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#example-cost-estimation-analyzer">Example: Cost Estimation Analyzer</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#custom-reporters">Custom Reporters</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#example-slack-reporter">Example: Slack Reporter</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#using-your-extensions">Using Your Extensions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#tips">Tips</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#need-more">Need More?</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#plugin-system-plug-play">Plugin System (Plug &amp; Play)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#example-plugin">Example Plugin</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#using-plugins">Using Plugins</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../contributing/">Contributing</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">tfsumpy Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">API Reference</li>
+      <li class="breadcrumb-item active">Extending tfsumpy</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/rafaelherik/tfsumpy/edit/master/docs/extending.md">Edit on rafaelherik/tfsumpy</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="extending-tfsumpy">Extending tfsumpy</h1>
+<h2 id="overview">Overview</h2>
+<p>tfsumpy is designed to be extensible. You can add your own analyzers (to interpret Terraform plans in new ways) and reporters (to output results in custom formats or destinations). This page shows how to build and register your own extensions.</p>
+<hr />
+<h2 id="custom-analyzers">Custom Analyzers</h2>
+<p>A custom analyzer lets you add new types of analysis to your Terraform plans. For example, you might want to:
+- Estimate costs
+- Enforce custom compliance rules
+- Detect drift or other organization-specific patterns</p>
+<h3 id="example-cost-estimation-analyzer">Example: Cost Estimation Analyzer</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">tfsumpy.analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnalyzerInterface</span><span class="p">,</span> <span class="n">AnalyzerResult</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">CostAnalyzer</span><span class="p">(</span><span class="n">AnalyzerInterface</span><span class="p">):</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="k">return</span> <span class="s2">&quot;cost&quot;</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnalyzerResult</span><span class="p">:</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="c1"># Your custom cost analysis logic here</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">cost_summary</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;total_cost&quot;</span><span class="p">:</span> <span class="mf">123.45</span><span class="p">}</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="k">return</span> <span class="n">AnalyzerResult</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">cost_summary</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Register your analyzer:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">context</span><span class="o">.</span><span class="n">register_analyzer</span><span class="p">(</span><span class="n">CostAnalyzer</span><span class="p">())</span>
+</code></pre></div></p>
+<hr />
+<h2 id="custom-reporters">Custom Reporters</h2>
+<p>A custom reporter lets you control how results are displayed or sent elsewhere. For example, you might want to:
+- Send results to Slack or email
+- Output as HTML, JSON, or other formats
+- Integrate with dashboards or ticketing systems</p>
+<h3 id="example-slack-reporter">Example: Slack Reporter</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">tfsumpy.reporter</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReporterInterface</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">send_to_slack</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="c1"># Implement your Slack integration here</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="k">pass</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="k">class</span><span class="w"> </span><span class="nc">SlackReporter</span><span class="p">(</span><span class="n">ReporterInterface</span><span class="p">):</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="nd">@property</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="k">return</span> <span class="s2">&quot;plan&quot;</span>  <span class="c1"># or &quot;cost&quot; for your custom analyzer</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">print_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        <span class="c1"># Format and send a message to Slack</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Terraform Plan Summary: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;total_changes&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> changes&quot;</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        <span class="n">send_to_slack</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Register your reporter:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">context</span><span class="o">.</span><span class="n">register_reporter</span><span class="p">(</span><span class="n">SlackReporter</span><span class="p">())</span>
+</code></pre></div></p>
+<hr />
+<h2 id="using-your-extensions">Using Your Extensions</h2>
+<p>Once registered, your custom analyzers and reporters are used by the tfsumpy <code>Context</code> just like the built-in ones:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">context</span> <span class="o">=</span> <span class="n">Context</span><span class="p">()</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">context</span><span class="o">.</span><span class="n">register_analyzer</span><span class="p">(</span><span class="n">CostAnalyzer</span><span class="p">())</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">context</span><span class="o">.</span><span class="n">register_reporter</span><span class="p">(</span><span class="n">SlackReporter</span><span class="p">())</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># Run your custom analysis</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">results</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">run_analyzers</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="n">plan_path</span><span class="o">=</span><span class="s2">&quot;plan.json&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">context</span><span class="o">.</span><span class="n">run_reports</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="tips">Tips</h2>
+<ul>
+<li>You can register multiple analyzers and reporters for the same category.</li>
+<li>Use the <code>category</code> property to control which analyzers/reporters are triggered for each type of analysis.</li>
+<li>See the <a href="../api/analyzers/">API Reference</a> and <a href="../api/reporters/">API Reference: Reporters</a> for more details.</li>
+</ul>
+<hr />
+<h2 id="need-more">Need More?</h2>
+<p>If you have a use case not covered here, open an issue or contribute your extension to the project!</p>
+<hr />
+<h2 id="plugin-system-plug-play">Plugin System (Plug &amp; Play)</h2>
+<p>tfsumpy supports plug-and-play extensions via plugins. Plugins are Python files placed in a <code>plugins/</code> directory (or a custom directory specified with <code>--plugin-dir</code>).</p>
+<ul>
+<li>Each plugin should define a <code>register(context)</code> function that registers analyzers/reporters.</li>
+<li>tfsumpy will automatically load and register all plugins in the directory at startup.</li>
+</ul>
+<h3 id="example-plugin">Example Plugin</h3>
+<p>Create a file <code>plugins/my_cost_plugin.py</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">tfsumpy.analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnalyzerInterface</span><span class="p">,</span> <span class="n">AnalyzerResult</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyCostAnalyzer</span><span class="p">(</span><span class="n">AnalyzerInterface</span><span class="p">):</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="nd">@property</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="k">return</span> <span class="s2">&quot;cost&quot;</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="k">return</span> <span class="n">AnalyzerResult</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;total_cost&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">})</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="n">context</span><span class="o">.</span><span class="n">register_analyzer</span><span class="p">(</span><span class="n">MyCostAnalyzer</span><span class="p">())</span>
+</code></pre></div>
+<h3 id="using-plugins">Using Plugins</h3>
+<ul>
+<li>By default, tfsumpy loads plugins from the <code>plugins/</code> directory in your project.</li>
+<li>You can specify a different directory with the <code>--plugin-dir</code> CLI flag:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>tfsumpy<span class="w"> </span>plan.json<span class="w"> </span>--plugin-dir<span class="w"> </span>my_plugins/
+</code></pre></div>
+<p>All plugins in the directory will be loaded and their analyzers/reporters registered automatically. </p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../api/models/" class="btn btn-neutral float-left" title="Models"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../contributing/" class="btn btn-neutral float-right" title="Contributing">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/rafaelherik/tfsumpy" class="fa fa-code-fork" style="color: #fcfcfc"> rafaelherik/tfsumpy</a>
+        </span>
+    
+    
+      <span><a href="../api/models/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../contributing/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
