@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -27,8 +27,17 @@ jobs:
         pip install poetry twine
         poetry install --with dev
         
-    - name: Run tests
-      run: poetry run pytest
+    - name: Lint with Ruff
+      run: poetry run ruff check .
+        
+    - name: Run tests with coverage
+      run: |
+        poetry run pytest --cov=tfsumpy --cov-report=term
+        poetry run coverage report --fail-under=75
+
+    - name: Coverage reminder
+      if: success()
+      run: echo "::notice ::Current threshold is 75%. PRs that raise coverage are welcome!"
         
     - name: Build package
       run: poetry build
