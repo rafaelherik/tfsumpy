@@ -9,6 +9,10 @@
 ## Resource Changes
 {% for resource in resources %}
 ### {{ resource.resource_type }}.{{ resource.identifier }}
+**Action:** {{ resource.action | upper }}
+{% if resource.replacement and resource.replacement_triggers %}
+- **Replacement triggered by:** {{ resource.replacement_triggers | join(', ') }}
+{% endif %}
 {% if resource.changes %}
 #### Changes:
 {% for change in resource.changes %}

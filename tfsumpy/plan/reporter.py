@@ -67,7 +67,10 @@ class PlanReporter(BaseReporter, ReporterInterface):
                 'identifier': resource['identifier'],
                 'action': resource['action'],
                 'provider': resource.get('provider', 'unknown'),
-                'module': resource.get('module', 'root')
+                'module': resource.get('module', 'root'),
+                # Add replacement and triggers for reporting
+                'replacement': resource.get('replacement', False),
+                'replacement_triggers': resource.get('replacement_triggers', []),
             }
 
             # Process changes if requested
@@ -102,7 +105,9 @@ class PlanReporter(BaseReporter, ReporterInterface):
                     'raw': {
                         'before': resource.get('before', {}),
                         'after': resource.get('after', {})
-                    }
+                    },
+                    # Add replacement triggers to details if present
+                    'replacement_triggers': resource.get('replacement_triggers', [])
                 }
 
             processed_resources.append(resource_data)
@@ -140,9 +145,9 @@ class PlanReporter(BaseReporter, ReporterInterface):
         """Format the change summary section."""
         self._write(f"\n{self._colorize('Total Changes: ' + str(report['total_changes']), 'bold')}\n")
         
-        # Add change counts by type
+        # Add change counts by type (do not show 'replace' in summary)
         for action in ['create', 'update', 'delete']:
-            count = report['change_breakdown'][action]
+            count = report['change_breakdown'].get(action, 0)
             self._write(f"{action.title()}: {count}\n")
 
     def _print_resource_details(self, resources: list, show_changes: bool = False) -> None:
@@ -153,7 +158,8 @@ class PlanReporter(BaseReporter, ReporterInterface):
         action_colors = {
             'CREATE': 'green',
             'UPDATE': 'blue',
-            'DELETE': 'red'
+            'DELETE': 'red',
+            'REPLACE': 'yellow',
         }
         
         for resource in resources:
@@ -164,9 +170,14 @@ class PlanReporter(BaseReporter, ReporterInterface):
                 f"\n{colored_action} {resource['resource_type']}: "
                 f"{resource['identifier']}\n"
             )
-            
+            # Show replacement triggers if this is a replacement
+            if resource.get('replacement', False) and resource.get('replacement_triggers'):
+                triggers = ', '.join(resource['replacement_triggers'])
+                self._write(f"  Replacement triggered by: {triggers}\n")
             if show_changes:
                 self._print_attribute_changes(resource)
+        # Ensure a newline at the end to avoid shell prompt artifacts
+        self._write("\n")
 
     def _print_attribute_changes(self, resource: Dict) -> None:
         """Format attribute changes for a resource."""
@@ -182,7 +193,8 @@ class PlanReporter(BaseReporter, ReporterInterface):
         symbol_colors = {
             '+': 'green',   # create
             '~': 'blue',    # update
-            '-': 'red'      # delete
+            '-': 'red',     # delete
+            '-/+': 'yellow' # replace
         }
         
         for attr in sorted(all_attrs - skip_attrs):
@@ -196,8 +208,11 @@ class PlanReporter(BaseReporter, ReporterInterface):
                 elif resource['action'] == 'delete':
                     symbol = self._colorize('-', symbol_colors['-'])
                     lines.append(f"  {symbol} {attr} = {before_val}")
-                else:  # update
+                elif resource['action'] == 'update':
                     symbol = self._colorize('~', symbol_colors['~'])
+                    lines.append(f"  {symbol} {attr} = {before_val} -> {after_val}")
+                elif resource['action'] == 'replace':
+                    symbol = self._colorize('-/+', symbol_colors['-/+'])
                     lines.append(f"  {symbol} {attr} = {before_val} -> {after_val}")
         
         self._write('\n'.join(lines))
