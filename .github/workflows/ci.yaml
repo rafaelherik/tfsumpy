@@ -36,11 +36,11 @@ jobs:
       - name: Run tests with coverage
         run: |
           poetry run pytest --cov=tfsumpy --cov-report=term
-          poetry run coverage report --fail-under=75
+          poetry run coverage report --fail-under=80
 
       - name: Coverage reminder
         if: success()
-        run: echo "::notice ::Current threshold is 75%. PRs that raise coverage are welcome!"
+        run: echo "::notice ::Current threshold is 80%. PRs that raise coverage are welcome!"
 
       - name: Build package
         run: poetry build
