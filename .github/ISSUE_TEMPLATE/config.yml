@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/rafaelherik/tfsumpy/security/advisories/new
+    about: Report a security vulnerability in tfsumpy.
