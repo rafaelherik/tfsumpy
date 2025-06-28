@@ -3,10 +3,10 @@ name: Submit an issue
 description: Choose the type of issue you'd like to submit
 contact_links:
   - name: 🐛 Bug Report
-    url: https://github.com/rafaelherik/tfsumpy/issues/new?assignees=&labels=bug&template=bug_report.md&title=
+    url: https://github.com/rafaelherik/tfsumpy/issues/new?labels=bug&template=bug.yml
     about: Report a bug or unexpected behavior
   - name: ✨ Feature Request
-    url: https://github.com/rafaelherik/tfsumpy/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=
+    url: https://github.com/rafaelherik/tfsumpy/issues/new?labels=enhancement&template=feature.yml
     about: Suggest an enhancement or new feature
   - name: 🔒 Security Vulnerability
     url: https://github.com/rafaelherik/tfsumpy/security/advisories/new
