@@ -1,5 +1,13 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
+name: Submit an issue
+description: Choose the type of issue you'd like to submit
 contact_links:
-  - name: Report a security vulnerability
+  - name: 🐛 Bug Report
+    url: https://github.com/rafaelherik/tfsumpy/issues/new?assignees=&labels=bug&template=bug_report.md&title=
+    about: Report a bug or unexpected behavior
+  - name: ✨ Feature Request
+    url: https://github.com/rafaelherik/tfsumpy/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=
+    about: Suggest an enhancement or new feature
+  - name: 🔒 Security Vulnerability
     url: https://github.com/rafaelherik/tfsumpy/security/advisories/new
-    about: Report a security vulnerability in tfsumpy.
+    about: Report a security vulnerability in tfsumpy
