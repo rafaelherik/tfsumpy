@@ -30,8 +30,9 @@
 {% elif resource.action == 'delete' %}
 - **{{ change.attribute }}**: {{ change.before }}
 {% else %}
-{# <!-- TODO: detect if the strings in before and after are long. If so, the arrow between them should be on a new line to help readability --> #}
-- **{{ change.attribute }}**: {{ change.before }} ⟹ {{ change.after }}
+- **{{ change.attribute }}**:
+  - Before: {{ change.before }}
+  - After:  {{ change.after }}
 {% endif %}
 {# <!-- markdownlint-enable MD032 --> #}
 {% endfor %}
