@@ -13,7 +13,7 @@
 {# <!-- markdownlint-disable-next-line MD022 --> #}
 ### {{ resource.resource_type }}.{{ resource.identifier }}
 
-**Action:** {{ resource.action | upper }}
+**Action:** {{ resource.action | title }}
 
 {% if resource.replacement and resource.replacement_triggers %}
 {# <!-- markdownlint-disable-next-line MD032 --> #}
@@ -24,9 +24,16 @@
 #### Changes for {{ resource.resource_type }}.{{ resource.identifier }}
 
 {% for change in resource.changes %}
+{# <!-- markdownlint-disable MD032 --> #}
+{% if resource.action == 'create' %}
+- **{{ change.attribute }}**: {{ change.after }}
+{% elif resource.action == 'delete' %}
+- **{{ change.attribute }}**: {{ change.before }}
+{% else %}
 {# <!-- TODO: detect if the strings in before and after are long. If so, the arrow between them should be on a new line to help readability --> #}
-{# <!-- markdownlint-disable-next-line MD032 --> #}
-- **{{ change.attribute }}**: {{ change.before }} → {{ change.after }}
+- **{{ change.attribute }}**: {{ change.before }} ⟹ {{ change.after }}
+{% endif %}
+{# <!-- markdownlint-enable MD032 --> #}
 {% endfor %}
 {% endif %}
 {% if show_details %}
