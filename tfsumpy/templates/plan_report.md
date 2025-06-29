@@ -27,8 +27,10 @@
 {% endif %}
 {% endfor %}
 
+{% if analysis and analysis|length > 0 %}
+
 ## Analysis
-{% if analysis %}
+
 {% for item in analysis %}
 ### {{ item.title }}
 {{ item.description }}
