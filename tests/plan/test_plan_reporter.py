@@ -134,10 +134,12 @@ class TestPlanReporter:
             
             # Verify detailed information
             assert '## Resource Changes' in written_text
-            assert '### Details:' in written_text
+            assert '#### Details for aws_s3_bucket.data_bucket' in written_text
+            assert '#### Details for aws_instance.web_server' in written_text
+            assert '#### Details for aws_security_group.old_sg' in written_text
             assert '**Provider**:' in written_text
             assert '**Module**:' in written_text
-            assert '**Dependencies**:' in written_text
+            # Dependencies is optional and only shown if they exist
 
     def test_print_report_json(self, reporter, sample_report_data):
         """Test JSON report generation."""
